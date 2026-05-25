@@ -1,0 +1,8 @@
+{
+  "name": "Max Bot Suite",
+  "description": "Professional Quantum AI-powered algorithmic trading bot simulator with customizable multi-take profit thresholds, trailing execution, and multi-exchange API configuration controls.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
