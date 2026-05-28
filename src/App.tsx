@@ -97,6 +97,53 @@ export default function App() {
   const [lastLogCount, setLastLogCount] = useState<number>(0);
   const [newLogToast, setNewLogToast] = useState<string | null>(null);
 
+  const restoreUserSession = async () => {
+    if (!currentUser?.username || !currentUser?.password) return;
+    try {
+      console.log('Restoring wiped server-side user data...');
+      let stateToSync = state;
+      const savedStateStr = localStorage.getItem(`maxbot_state_${currentUser.username.toLowerCase()}`);
+      if (savedStateStr) {
+        try {
+          const parsed = JSON.parse(savedStateStr);
+          if (parsed && parsed.balance !== undefined) {
+            stateToSync = parsed;
+          }
+        } catch (e) {
+          console.error('Failed to parse saved state:', e);
+        }
+      }
+      const response = await fetch('/api/sync-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          username: currentUser.username,
+          email: currentUser.email || `${currentUser.username}@example.com`,
+          phone: currentUser.phone || '',
+          password: currentUser.password,
+          isAdmin: !!currentUser.isAdmin,
+          state: stateToSync
+        })
+      });
+      if (response.ok) {
+        console.log('Server-side user data restored successfully!');
+        const res = await fetch('/api/state', {
+          headers: getHeaders()
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setState(data.state);
+          setCoinPrices(data.coinPrices || {});
+          setIsConnected(true);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to restore wiped user session:', err);
+    }
+  };
+
   // Poll state from Backend Server API
   const fetchStateFromServer = async () => {
     if (!currentUser?.username) return;
@@ -106,6 +153,14 @@ export default function App() {
       });
       if (res.ok) {
         const data = await res.json();
+        
+        // Check if the server fell back or if the user got wiped from the database
+        if (data.username && currentUser?.username && data.username.toLowerCase() !== currentUser.username.toLowerCase()) {
+          console.warn(`User mismatch detected on server. Initiating secure client-side restoration...`);
+          await restoreUserSession();
+          return;
+        }
+
         const serverState = data.state as AccountState;
         setState(serverState);
         setCoinPrices(data.coinPrices || {});

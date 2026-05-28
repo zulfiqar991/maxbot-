@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, TrendingUp, TrendingDown, Clock, ShieldAlert, CheckCircle, Info, ExternalLink } from 'lucide-react';
+import { X, TrendingUp, TrendingDown, Clock, ShieldAlert, CheckCircle, Info, ExternalLink, Download } from 'lucide-react';
 import { Deal } from '../types';
 
 interface DealsTrackerProps {
@@ -10,6 +10,7 @@ interface DealsTrackerProps {
 
 export function DealsTracker({ deals, onCloseDeal, isClosing }: DealsTrackerProps) {
   const [dealTab, setDealTab] = useState<'active' | 'history'>('active');
+  const [calcMode, setCalcMode] = useState<'price' | 'roi'>('price');
 
   const activeDeals = deals.filter(d => d.status === 'active');
   const historyDeals = deals.filter(d => d.status !== 'active');
@@ -34,6 +35,69 @@ export function DealsTracker({ deals, onCloseDeal, isClosing }: DealsTrackerProp
     }
   };
 
+  const handleExportToCSV = () => {
+    if (historyDeals.length === 0) return;
+
+    // Standard CSV headers for trading ledger export
+    const headers = [
+      'Deal ID',
+      'Closed/Completed Time (UTC)',
+      'Trading Bot Name',
+      'Asset Pair',
+      'Direction (Type)',
+      'Leverage Multiplier',
+      'Sizing ($ USDT Volume)',
+      'Sizing (Coin Amount Asset)',
+      'Entry Raw Price',
+      'Exit/Trigger Price',
+      'Realized Net Profit/Loss (USD)',
+      'Realized ROI P&L (%)',
+      'Exit Condition (Status)',
+      'Initial Created timestamp'
+    ];
+
+    // Map each historic deal to double quote padded CSV row representation
+    const csvRows = historyDeals.map(deal => {
+      const closedTime = deal.updatedAt || deal.createdAt;
+      const formattedTime = new Date(closedTime).toISOString().replace('T', ' ').slice(0, 19);
+      const cleanBotName = (deal.botName || 'Custom Bot').replace(/"/g, '""');
+      
+      return [
+        `"${deal.id}"`,
+        `"${formattedTime}"`,
+        `"${cleanBotName}"`,
+        `"${deal.pair}"`,
+        `"${deal.type.toUpperCase()}"`,
+        `"${deal.leverage}x"`,
+        `"${deal.volume}"`,
+        `"${deal.amountAsset}"`,
+        `"${deal.entryPrice}"`,
+        `"${deal.exitPrice || deal.currentPrice}"`,
+        `"${deal.pnl.toFixed(4)}"`,
+        `"${deal.pnlPercent.toFixed(2)}"`,
+        `"${deal.status.toUpperCase()}"`,
+        `"${deal.createdAt}"`
+      ];
+    });
+
+    // Merge header & contentrows
+    const csvContent = "\ufeff" + [
+      headers.join(','),
+      ...csvRows.map(row => row.join(','))
+    ].join('\n');
+
+    // Create a secure client browser trigger download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `trader_deals_ledger_tax_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="space-y-6">
       {/* Upper info section */}
@@ -42,28 +106,47 @@ export function DealsTracker({ deals, onCloseDeal, isClosing }: DealsTrackerProp
         <p className="text-xs text-gray-400 mt-1">Live active positions and historic webhook executed trade logs</p>
       </div>
 
-      {/* Tabs */}
-      <div className="flex border-b border-[#20293A]">
-        <button
-          onClick={() => setDealTab('active')}
-          className={`px-5 py-2.5 text-xs font-semibold border-b-2 transition cursor-pointer ${
-            dealTab === 'active'
-              ? 'border-[#FF5A00] text-[#FF5A00]'
-              : 'border-transparent text-gray-400 hover:text-white'
-          }`}
-        >
-          Active Positions ({activeDeals.length})
-        </button>
-        <button
-          onClick={() => setDealTab('history')}
-          className={`px-5 py-2.5 text-xs font-semibold border-b-2 transition cursor-pointer ${
-            dealTab === 'history'
-              ? 'border-[#FF5A00] text-[#FF5A00]'
-              : 'border-transparent text-gray-400 hover:text-white'
-          }`}
-        >
-          Closed Trade History ({historyDeals.length})
-        </button>
+      {/* Tabs list & CSV export row */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#20293A] gap-3">
+        <div className="flex">
+          <button
+            onClick={() => setDealTab('active')}
+            className={`px-5 py-2.5 text-xs font-semibold border-b-2 transition cursor-pointer ${
+              dealTab === 'active'
+                ? 'border-[#FF5A00] text-[#FF5A00]'
+                : 'border-transparent text-gray-400 hover:text-white'
+            }`}
+          >
+            Active Positions ({activeDeals.length})
+          </button>
+          <button
+            onClick={() => setDealTab('history')}
+            className={`px-5 py-2.5 text-xs font-semibold border-b-2 transition cursor-pointer ${
+              dealTab === 'history'
+                ? 'border-[#FF5A00] text-[#FF5A00]'
+                : 'border-transparent text-gray-400 hover:text-white'
+            }`}
+          >
+            Closed Trade History ({historyDeals.length})
+          </button>
+        </div>
+
+        {/* Export Button visible strictly on history tab to match user instruction */}
+        {dealTab === 'history' && (
+          <button
+            onClick={handleExportToCSV}
+            disabled={historyDeals.length === 0}
+            className={`flex items-center gap-1.5 px-3 py-1.5 mb-2 sm:mb-0 mr-1.5 text-xs font-bold transition rounded-lg border cursor-pointer ${
+              historyDeals.length === 0 
+                ? 'bg-gray-800/20 border-gray-800/50 text-gray-500 cursor-not-allowed opacity-60' 
+                : 'bg-orange-500/10 hover:bg-orange-500 hover:text-black border-orange-500/30 text-orange-400 hover:border-transparent active:scale-95'
+            }`}
+            title={historyDeals.length === 0 ? "No closed deals to export" : "Download closed deal history formatted for tax accounting or analysis in Excel/Sheets"}
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>Export Deal History to CSV</span>
+          </button>
+        )}
       </div>
 
       {dealTab === 'active' ? (
@@ -114,110 +197,200 @@ export function DealsTracker({ deals, onCloseDeal, isClosing }: DealsTrackerProp
               </p>
             </div>
           ) : (
-            <div className="bg-[#121824] border border-[#20293A] rounded-2xl overflow-hidden shadow-xl">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="bg-[#1C2533] text-gray-400 font-bold uppercase font-mono border-b border-[#20293A]">
-                      <th className="p-4">Pair / Bot ID</th>
-                      <th className="p-4 text-center">Direction</th>
-                      <th className="p-4 text-right">Entry Price</th>
-                      <th className="p-4 text-right">Ticking Price</th>
-                      <th className="p-4 text-right">TP / SL Targets</th>
-                      <th className="p-4 text-right">Position Size</th>
-                      <th className="p-4 text-right">Floating P&L</th>
-                      <th className="p-4 text-center">Terminate</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#1D2636]">
-                    {activeDeals.map((deal) => {
-                      const isLong = deal.type === 'long';
-                      const pnlGlow = deal.pnl >= 0 ? 'text-emerald-400 font-bold' : 'text-rose-500 font-bold';
+            <div className="space-y-4">
+              {/* Aligned Math Mode Switcher */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between bg-[#121824] border border-[#20293A] p-4 rounded-2xl gap-3">
+                <div className="flex items-start gap-2.5">
+                  <div className="p-1.5 bg-orange-500/10 text-orange-400 rounded-lg">
+                    <Info className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-white uppercase tracking-wider font-mono">Consolidated Tracking Math</h4>
+                    <p className="text-[10px] text-gray-400 mt-0.5">Toggle aligned percentages models to show active Take Profit, Stop Loss, and P&L concurrently on the same logic.</p>
+                  </div>
+                </div>
+                <div className="bg-slate-950 border border-slate-800 rounded-lg p-0.5 flex gap-1 self-start sm:self-center">
+                  <button 
+                    onClick={() => setCalcMode('price')}
+                    className={`px-3 py-1.5 text-[10px] font-bold rounded-md transition cursor-pointer flex items-center gap-1 ${
+                      calcMode === 'price' 
+                        ? 'bg-[#FF5A00] text-black shadow-md font-extrabold' 
+                        : 'text-gray-400 hover:text-white'
+                    }`}
+                  >
+                    <span>Pure Price % (Asset Deviation)</span>
+                  </button>
+                  <button 
+                    onClick={() => setCalcMode('roi')}
+                    className={`px-3 py-1.5 text-[10px] font-bold rounded-md transition cursor-pointer flex items-center gap-1 ${
+                      calcMode === 'roi' 
+                        ? 'bg-[#FF5A00] text-black shadow-md font-extrabold' 
+                        : 'text-gray-400 hover:text-white'
+                    }`}
+                  >
+                    <span>Leveraged ROI % (Portfolio P&L)</span>
+                  </button>
+                </div>
+              </div>
 
-                      return (
-                        <tr key={deal.id} className="hover:bg-[#1C2533]/40 transition">
-                          <td className="p-4">
-                            <div className="font-semibold text-white text-sm">{deal.pair}</div>
-                            <div className="text-[10px] text-gray-400 mt-0.5 truncate max-w-[140px] md:max-w-xs">{deal.botName}</div>
-                          </td>
-                          <td className="p-4 text-center">
-                            <span className={`inline-flex items-center gap-1 font-bold text-[10px] px-2 py-0.5 uppercase tracking-wide rounded ${
-                              isLong 
-                                ? 'bg-emerald-500/10 text-emerald-400' 
-                                : 'bg-rose-500/10 text-rose-400'
-                            }`}>
-                              {isLong ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                              {deal.type} {deal.leverage}x
-                            </span>
-                          </td>
-                          <td className="p-4 text-right font-mono text-gray-300">
-                            ${deal.entryPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </td>
-                          <td className="p-4 text-right font-mono text-white font-semibold">
-                            ${deal.currentPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </td>
-                          <td className="p-4 text-right">
-                            {deal.takeProfitType === 'multiple' ? (
-                              <div className="space-y-0.5 text-left inline-block">
-                                <div className="text-[9px] font-mono leading-none">
-                                  <span className={deal.tp1Hit ? "text-emerald-500 font-semibold" : "text-emerald-400"}>TP1: </span>
-                                  <span className={deal.tp1Hit ? "text-gray-500 line-through" : "text-gray-300"}>
-                                    ${deal.tp1Price?.toLocaleString('en-US', { maximumFractionDigits: 2 })}
-                                  </span>
-                                  {deal.tp1Hit ? <span className="text-emerald-400 ml-1 font-bold">✓</span> : <span className="text-gray-600 ml-1">⏳</span>}
+              {/* Table Container */}
+              <div className="bg-[#121824] border border-[#20293A] rounded-2xl overflow-hidden shadow-xl">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-[#1C2533] text-gray-400 font-bold uppercase font-mono border-b border-[#20293A]">
+                        <th className="p-4">Pair / Bot ID</th>
+                        <th className="p-4 text-center border-l border-slate-800/40">Direction</th>
+                        <th className="p-4 text-right border-l border-slate-800/40">Entry Price</th>
+                        <th className="p-4 text-right border-l border-slate-800/40">Ticking Price</th>
+                        <th className="p-4 text-right border-l border-slate-800/40">
+                          {calcMode === 'price' ? 'TP / SL Targets (Price %)' : 'TP / SL Targets (ROI %)'}
+                        </th>
+                        <th className="p-4 text-right border-l border-slate-800/40">Position Size</th>
+                        <th className="p-4 text-right border-l border-slate-800/40">
+                          {calcMode === 'price' ? 'Floating P&L (Price %)' : 'Floating P&L (ROI %)'}
+                        </th>
+                        <th className="p-4 text-center border-l border-slate-800/40">Terminate</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#1D2636]">
+                      {activeDeals.map((deal) => {
+                        const isLong = deal.type === 'long';
+                        const pnlGlow = deal.pnl >= 0 ? 'text-emerald-400 font-bold' : 'text-rose-500 font-bold';
+
+                        return (
+                          <tr key={deal.id} className="hover:bg-[#1C2533]/40 transition">
+                            <td className="p-4">
+                              <div className="font-semibold text-white text-sm">{deal.pair}</div>
+                              <div className="text-[10px] text-gray-400 mt-0.5 truncate max-w-[140px] md:max-w-xs">{deal.botName}</div>
+                            </td>
+                            <td className="p-4 text-center border-l border-slate-800/20">
+                              <span className={`inline-flex items-center gap-1 font-bold text-[10px] px-2 py-0.5 uppercase tracking-wide rounded ${
+                                isLong 
+                                  ? 'bg-emerald-500/10 text-emerald-400' 
+                                  : 'bg-rose-500/10 text-rose-400'
+                              }`}>
+                                {isLong ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                                {deal.type} {deal.leverage}x
+                              </span>
+                            </td>
+                            <td className="p-4 text-right font-mono text-gray-300 border-l border-slate-800/20">
+                              <div>${deal.entryPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                            </td>
+                            <td className="p-4 text-right font-mono text-white font-semibold border-l border-slate-800/20">
+                              ${deal.currentPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </td>
+                            <td className="p-4 text-right border-l border-slate-800/20">
+                              {deal.takeProfitType === 'multiple' ? (
+                                <div className="space-y-0.5 text-left inline-block">
+                                  <div className="text-[9px] font-mono leading-none">
+                                    <span className={deal.tp1Hit ? "text-emerald-500 font-semibold" : "text-emerald-400"}>TP1: </span>
+                                    <span className={deal.tp1Hit ? "text-gray-500 line-through" : "text-gray-300"}>
+                                      ${deal.tp1Price?.toLocaleString('en-US', { maximumFractionDigits: 2 })}
+                                    </span>
+                                    {deal.tp1Hit ? <span className="text-emerald-400 ml-1 font-bold">✓</span> : <span className="text-gray-500 ml-1">⏳</span>}
+                                  </div>
+                                  <div className="text-[9px] font-mono leading-none">
+                                    <span className={deal.tp2Hit ? "text-emerald-500 font-semibold" : "text-emerald-400"}>TP2: </span>
+                                    <span className={deal.tp2Hit ? "text-gray-500 line-through" : "text-gray-350"}>
+                                      ${deal.tp2Price?.toLocaleString('en-US', { maximumFractionDigits: 2 })}
+                                    </span>
+                                    {deal.tp2Hit ? <span className="text-emerald-400 ml-1 font-bold">✓</span> : <span className="text-gray-500 ml-1">⏳</span>}
+                                  </div>
+                                  <div className="text-[9px] font-mono leading-none">
+                                    <span className={deal.tp3Hit ? "text-emerald-500 font-semibold" : "text-emerald-400"}>TP3: </span>
+                                    <span className={deal.tp3Hit ? "text-gray-500 line-through" : "text-gray-350"}>
+                                      ${deal.tp3Price?.toLocaleString('en-US', { maximumFractionDigits: 2 })}
+                                    </span>
+                                    {deal.tp3Hit ? <span className="text-emerald-400 ml-1 font-bold">✓</span> : <span className="text-gray-500 ml-1">⏳</span>}
+                                  </div>
+                                  <div className="text-[10px] font-mono mt-1 border-t border-gray-800/60 pt-0.5 font-bold">
+                                    <span className="text-rose-450 font-semibold">SL:</span> {deal.stopLossPrice ? (
+                                      <span>
+                                        ${deal.stopLossPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                        {deal.stopLossPercent !== undefined && (
+                                          <span className="text-rose-500 font-semibold ml-1">
+                                            ({calcMode === 'price' ? `${deal.stopLossPercent}%` : `${(deal.stopLossPercent * deal.leverage).toFixed(1)}%`})
+                                          </span>
+                                        )}
+                                      </span>
+                                    ) : (
+                                      'N/A'
+                                    )}
+                                  </div>
                                 </div>
-                                <div className="text-[9px] font-mono leading-none">
-                                  <span className={deal.tp2Hit ? "text-emerald-500 font-semibold" : "text-emerald-400"}>TP2: </span>
-                                  <span className={deal.tp2Hit ? "text-gray-500 line-through" : "text-gray-300"}>
-                                    ${deal.tp2Price?.toLocaleString('en-US', { maximumFractionDigits: 2 })}
-                                  </span>
-                                  {deal.tp2Hit ? <span className="text-emerald-400 ml-1 font-bold">✓</span> : <span className="text-gray-600 ml-1">⏳</span>}
-                                </div>
-                                <div className="text-[9px] font-mono leading-none">
-                                  <span className={deal.tp3Hit ? "text-emerald-500 font-semibold" : "text-emerald-400"}>TP3: </span>
-                                  <span className={deal.tp3Hit ? "text-gray-500 line-through" : "text-gray-300"}>
-                                    ${deal.tp3Price?.toLocaleString('en-US', { maximumFractionDigits: 2 })}
-                                  </span>
-                                  {deal.tp3Hit ? <span className="text-emerald-400 ml-1 font-bold">✓</span> : <span className="text-gray-600 ml-1">⏳</span>}
-                                </div>
+                              ) : (
+                                <>
+                                  <div className="text-[10px] font-mono">
+                                    <span className="text-emerald-400 font-medium">TP: </span>
+                                    {deal.takeProfitPrice ? (
+                                      <span>
+                                        ${deal.takeProfitPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                        {deal.takeProfitPercent !== undefined && (
+                                          <span className="text-emerald-500 font-bold ml-1">
+                                            ({calcMode === 'price' ? `${deal.takeProfitPercent.toFixed(2)}%` : `${(deal.takeProfitPercent * deal.leverage).toFixed(1)}%`})
+                                          </span>
+                                        )}
+                                      </span>
+                                    ) : (
+                                      'N/A'
+                                    )}
+                                  </div>
+                                  <div className="text-[10px] font-mono mt-1 border-t border-gray-800/60 pt-0.5">
+                                    <span className="text-rose-400 font-semibold">SL: </span>
+                                    {deal.stopLossPrice ? (
+                                      <span>
+                                        ${deal.stopLossPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                        {deal.stopLossPercent !== undefined && (
+                                          <span className="text-rose-500 font-bold ml-1">
+                                            ({calcMode === 'price' ? `${deal.stopLossPercent.toFixed(2)}%` : `${(deal.stopLossPercent * deal.leverage).toFixed(1)}%`})
+                                          </span>
+                                        )}
+                                      </span>
+                                    ) : (
+                                      'N/A'
+                                    )}
+                                  </div>
+                                </>
+                              )}
+                            </td>
+                            <td className="p-4 text-right font-mono border-l border-slate-800/20">
+                              <div className="text-white font-medium">${deal.volume.toFixed(2)} USDT</div>
+                              <div className="text-[10px] text-gray-400 mt-0.5">{deal.amountAsset.toFixed(4)} Contract</div>
+                            </td>
+                            <td className="p-4 text-right font-mono border-l border-slate-800/20">
+                              <div className={`${pnlGlow} text-sm`}>
+                                {deal.pnl >= 0 ? '+' : ''}${deal.pnl.toFixed(2)}
                               </div>
-                            ) : (
-                              <div className="text-[10px] font-mono">
-                                <span className="text-emerald-400 font-medium">TP:</span> {deal.takeProfitPrice ? `$${deal.takeProfitPrice.toLocaleString('en-US', { maximumFractionDigits: 2 })}` : 'N/A'}
+                              <div className={`${pnlGlow} text-[10px] mt-0.2`}>
+                                {calcMode === 'price' ? (
+                                  <>
+                                    {deal.pnlPercent >= 0 ? '+' : ''}{(deal.pnlPercent / deal.leverage).toFixed(2)}% Price
+                                  </>
+                                ) : (
+                                  <>
+                                    {deal.pnlPercent >= 0 ? '+' : ''}{deal.pnlPercent.toFixed(2)}% ROI
+                                  </>
+                                )}
                               </div>
-                            )}
-                            <div className="text-[10px] font-mono mt-1 border-t border-gray-800/60 pt-0.5">
-                              <span className="text-rose-400 font-medium font-semibold">SL:</span> {deal.stopLossPrice ? `$${deal.stopLossPrice.toLocaleString('en-US', { maximumFractionDigits: 2 })}` : 'N/A'}
-                            </div>
-                          </td>
-                          <td className="p-4 text-right font-mono">
-                            <div className="text-white font-medium">${deal.volume.toFixed(2)} USDT</div>
-                            <div className="text-[10px] text-gray-400 mt-0.5">{deal.amountAsset.toFixed(4)} Contract</div>
-                          </td>
-                          <td className="p-4 text-right font-mono">
-                            <div className={`${pnlGlow} text-sm`}>
-                              {deal.pnl >= 0 ? '+' : ''}${deal.pnl.toFixed(2)}
-                            </div>
-                            <div className={`${pnlGlow} text-[10px] mt-0.2`}>
-                              {deal.pnlPercent >= 0 ? '+' : ''}{deal.pnlPercent.toFixed(2)}%
-                            </div>
-                          </td>
-                          <td className="p-4 text-center">
-                            <button
-                              id={`close_deal_btn_${deal.id}`}
-                              onClick={() => onCloseDeal(deal.id)}
-                              disabled={isClosing === deal.id}
-                              className="px-2.5 py-1 bg-red-500/10 hover:bg-red-500 border border-red-500/30 hover:border-transparent hover:text-white text-red-400 cursor-pointer text-[10px] font-bold rounded uppercase tracking-wider transition active:scale-95"
-                              title="Instantly liquidate position on paper trading exchange connection"
-                            >
-                              {isClosing === deal.id ? 'Selling...' : 'Close'}
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                            </td>
+                            <td className="p-4 text-center border-l border-slate-800/20">
+                              <button
+                                id={`close_deal_btn_${deal.id}`}
+                                onClick={() => onCloseDeal(deal.id)}
+                                disabled={isClosing === deal.id}
+                                className="px-2.5 py-1 bg-red-500/10 hover:bg-red-500 border border-red-500/30 hover:border-transparent hover:text-white text-red-400 cursor-pointer text-[10px] font-bold rounded uppercase tracking-wider transition active:scale-95"
+                                title="Instantly liquidate position on paper trading exchange connection"
+                              >
+                                {isClosing === deal.id ? 'Selling...' : 'Close'}
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           )}

@@ -82,9 +82,32 @@ export function BotCreator({ onSave, onSaveGrid, isSaving, onCancel, botToEdit, 
   const [trailingStopLoss, setTrailingStopLoss] = useState<boolean>(
     botToEdit?.trailingStopLoss || false
   );
+  const [trailingSlDeviation, setTrailingSlDeviation] = useState<number>(
+    botToEdit?.trailingSlDeviation || 0.5
+  );
+  const [slMoveToBreakeven, setSlMoveToBreakeven] = useState<boolean>(
+    botToEdit?.slMoveToBreakeven || false
+  );
+  const [slBreakevenTrigger, setSlBreakevenTrigger] = useState<number>(
+    botToEdit?.slBreakevenTrigger || 2.0
+  );
+  const [slTimeoutEnabled, setSlTimeoutEnabled] = useState<boolean>(
+    botToEdit?.slTimeoutEnabled || false
+  );
+  const [slTimeoutSeconds, setSlTimeoutSeconds] = useState<number>(
+    botToEdit?.slTimeoutSeconds || 15
+  );
   const [maxActiveDeals, setMaxActiveDeals] = useState<number>(
     botToEdit?.maxActiveDeals || 3
   );
+
+  // 1. SIGNAL TYPE STATES
+  const [baseOrderSize, setBaseOrderSize] = useState<number>(botToEdit?.baseOrderSize || botToEdit?.orderSize || 100);
+  const [safetyOrderSize, setSafetyOrderSize] = useState<number>(botToEdit?.safetyOrderSize !== undefined ? botToEdit.safetyOrderSize : 150);
+  const [priceDeviationStep, setPriceDeviationStep] = useState<number>(botToEdit?.priceDeviationStep !== undefined ? botToEdit.priceDeviationStep : 2.0);
+  const [maxSafetyOrders, setMaxSafetyOrders] = useState<number>(botToEdit?.maxSafetyOrders !== undefined ? botToEdit.maxSafetyOrders : 5);
+  const [safetyOrderVolumeScale, setSafetyOrderVolumeScale] = useState<number>(botToEdit?.safetyOrderVolumeScale !== undefined ? botToEdit.safetyOrderVolumeScale : 1.5);
+  const [safetyOrderStepScale, setSafetyOrderStepScale] = useState<number>(botToEdit?.safetyOrderStepScale !== undefined ? botToEdit.safetyOrderStepScale : 1.0);
 
   // 2. GRID BOT STATES
   const [gridName, setGridName] = useState(gridBotToEdit?.name || '');
@@ -195,7 +218,8 @@ export function BotCreator({ onSave, onSaveGrid, isSaving, onCancel, botToEdit, 
         botDirection,
         leverage: strategyType === 'spot' ? 1 : leverage,
         orderSizeType,
-        orderSize,
+        orderSize: baseOrderSize,
+        baseOrderSize,
         takeProfitType,
         takeProfitValue: takeProfitType === 'none' ? 0 : takeProfitValue,
         trailingTakeProfit,
@@ -205,11 +229,22 @@ export function BotCreator({ onSave, onSaveGrid, isSaving, onCancel, botToEdit, 
         tp2Size: takeProfitType === 'multiple' ? tp2Size : undefined,
         tp3Value: takeProfitType === 'multiple' ? tp3Value : undefined,
         tp3Size: takeProfitType === 'multiple' ? tp3Size : undefined,
-        trailingTpDeviation: takeProfitType === 'multiple' ? trailingTpDeviation : undefined,
+        trailingTpDeviation: trailingTakeProfit ? trailingTpDeviation : undefined,
         stopLossType,
         stopLossValue: stopLossType === 'none' ? 0 : stopLossValue,
         trailingStopLoss,
-        maxActiveDeals
+        trailingSlDeviation: trailingStopLoss ? trailingSlDeviation : undefined,
+        slMoveToBreakeven,
+        slBreakevenTrigger: slMoveToBreakeven ? slBreakevenTrigger : undefined,
+        slTimeoutEnabled,
+        slTimeoutSeconds: slTimeoutEnabled ? slTimeoutSeconds : undefined,
+        maxActiveDeals,
+        // 3Commas DCA parameters
+        safetyOrderSize,
+        priceDeviationStep,
+        maxSafetyOrders,
+        safetyOrderVolumeScale,
+        safetyOrderStepScale
       };
 
       try {
@@ -661,8 +696,8 @@ export function BotCreator({ onSave, onSaveGrid, isSaving, onCancel, botToEdit, 
                       <div className="relative">
                         <input
                           type="number"
-                          value={orderSize}
-                          onChange={(e) => setOrderSize(Math.max(1, parseFloat(e.target.value) || 0))}
+                          value={baseOrderSize}
+                          onChange={(e) => setBaseOrderSize(Math.max(1, parseFloat(e.target.value) || 0))}
                           className="w-full bg-[#0F141F] border border-[#2D3748] rounded-xl px-4 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#FF5A00]"
                         />
                         <div className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400 font-mono">
@@ -701,8 +736,7 @@ export function BotCreator({ onSave, onSaveGrid, isSaving, onCancel, botToEdit, 
                 <div className="space-y-4">
                   <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest font-mono">5. Automatic Risk Managers</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    
-                    {/* Take Profit Setting */}
+                       {/* Take Profit Setting */}
                     <div className="bg-[#0F141F] border border-[#2D3748] rounded-xl p-4 space-y-3">
                       <div className="flex justify-between items-center text-xs font-semibold text-gray-300">
                         <span>TAKE PROFIT (TP TARGET)</span>
@@ -732,27 +766,51 @@ export function BotCreator({ onSave, onSaveGrid, isSaving, onCancel, botToEdit, 
                       </div>
 
                       {takeProfitType === 'percent' && (
-                        <div className="space-y-2">
-                          <div className="relative">
-                            <input
-                              type="number"
-                              step="0.1"
-                              min="0.1"
-                              value={takeProfitValue}
-                              onChange={(e) => setTakeProfitValue(Math.max(0.1, parseFloat(e.target.value) || 0))}
-                              className="w-full bg-[#0B0F17] border border-[#2D3748] rounded-xl px-4 py-2 text-sm font-semibold text-white focus:outline-none"
-                            />
-                            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-mono font-bold">%</span>
+                        <div className="space-y-4">
+                          <div className="space-y-2">
+                            <label className="block text-[10px] text-gray-400 uppercase font-bold tracking-wider font-mono">Take Profit Target</label>
+                            <div className="relative">
+                              <input
+                                type="number"
+                                step="0.1"
+                                min="0.1"
+                                value={takeProfitValue}
+                                onChange={(e) => setTakeProfitValue(Math.max(0.1, parseFloat(e.target.value) || 0))}
+                                className="w-full bg-[#0B0F17] border border-[#2D3748] rounded-xl px-4 py-2 text-sm font-semibold text-white focus:outline-none"
+                              />
+                              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-mono font-bold">%</span>
+                            </div>
                           </div>
-                          <label className="flex items-center space-x-2 text-xs text-gray-400 select-none cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={trailingTakeProfit}
-                              onChange={(e) => setTrailingTakeProfit(e.target.checked)}
-                              className="rounded border-gray-700 text-[#FF5A00] bg-[#0B0F17] focus:ring-[#FF5A00]"
-                            />
-                            <span>Enable Trailing Take Profit (Deviation: 0.2%)</span>
-                          </label>
+                          
+                          <div className="space-y-3 bg-[#0B0F17]/50 p-3 rounded-xl border border-slate-800">
+                            <label className="flex items-center space-x-2 text-xs text-gray-300 select-none cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={trailingTakeProfit}
+                                onChange={(e) => setTrailingTakeProfit(e.target.checked)}
+                                className="rounded border-gray-700 text-[#FF5A00] bg-[#0B0F17] focus:ring-[#FF5A00]"
+                              />
+                              <span className="font-semibold">Enable Trailing Take Profit</span>
+                            </label>
+                            
+                            {trailingTakeProfit && (
+                              <div className="space-y-1.5 pt-1 border-t border-slate-800/40">
+                                <label className="block text-[10px] text-gray-400 uppercase font-bold tracking-wider font-mono">Trailing TP Deviation</label>
+                                <div className="relative">
+                                  <input
+                                    type="number"
+                                    step="0.05"
+                                    min="0.01"
+                                    value={trailingTpDeviation}
+                                    onChange={(e) => setTrailingTpDeviation(Math.max(0.01, parseFloat(e.target.value) || 0.1))}
+                                    className="w-full bg-[#070a13] border border-gray-800 rounded-lg px-3 py-1.5 text-xs font-semibold text-white focus:outline-none font-mono"
+                                  />
+                                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-gray-500 font-mono font-bold">% deviation</span>
+                                </div>
+                                <span className="text-[9.5px] text-gray-550 block leading-tight">Secures profits once price pulls back by this % from local peaks.</span>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       )}
 
@@ -863,20 +921,34 @@ export function BotCreator({ onSave, onSaveGrid, isSaving, onCancel, botToEdit, 
                             </div>
                           </div>
 
-                          <div className="space-y-2">
-                            <label className="block text-[10px] text-gray-400 uppercase font-bold tracking-wider font-mono">Trailing TP Deviation</label>
-                            <div className="relative">
+                          <div className="space-y-3 bg-[#0B0F17]/50 p-3 rounded-xl border border-slate-800">
+                            <label className="flex items-center space-x-2 text-xs text-gray-300 select-none cursor-pointer">
                               <input
-                                type="number"
-                                step="0.05"
-                                min="0.01"
-                                value={trailingTpDeviation}
-                                onChange={(e) => setTrailingTpDeviation(Math.max(0.01, parseFloat(e.target.value) || 0.1))}
-                                className="w-full bg-[#0B0F17] border border-[#2D3748] rounded-xl px-4 py-2 text-sm font-semibold text-white focus:outline-none font-mono"
+                                type="checkbox"
+                                checked={trailingTakeProfit}
+                                onChange={(e) => setTrailingTakeProfit(e.target.checked)}
+                                className="rounded border-gray-700 text-[#FF5A00] bg-[#0B0F17] focus:ring-[#FF5A00]"
                               />
-                              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-mono font-bold">% deviation</span>
-                            </div>
-                            <span className="text-[10px] text-gray-500 leading-none">Keeps positions trailing higher if momentum spikes.</span>
+                              <span className="font-semibold">Enable Trailing Take Profit</span>
+                            </label>
+                            
+                            {trailingTakeProfit && (
+                              <div className="space-y-1.5 pt-1 border-t border-slate-800/40">
+                                <label className="block text-[10px] text-gray-400 uppercase font-bold tracking-wider font-mono">Trailing TP Deviation</label>
+                                <div className="relative">
+                                  <input
+                                    type="number"
+                                    step="0.05"
+                                    min="0.01"
+                                    value={trailingTpDeviation}
+                                    onChange={(e) => setTrailingTpDeviation(Math.max(0.01, parseFloat(e.target.value) || 0.1))}
+                                    className="w-full bg-[#070a13] border border-gray-800 rounded-lg px-3 py-1.5 text-xs font-semibold text-white focus:outline-none font-mono"
+                                  />
+                                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-gray-500 font-mono font-bold">% deviation</span>
+                                </div>
+                                <span className="text-[9.5px] text-gray-550 block leading-tight">Trails each TP tier to secure maximal profit margins during spikes.</span>
+                              </div>
+                            )}
                           </div>
                         </div>
                       )}
@@ -917,15 +989,102 @@ export function BotCreator({ onSave, onSaveGrid, isSaving, onCancel, botToEdit, 
                             />
                             <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-mono font-bold">%</span>
                           </div>
-                          <label className="flex items-center space-x-2 text-xs text-gray-400 select-none cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={trailingStopLoss}
-                              onChange={(e) => setTrailingStopLoss(e.target.checked)}
-                              className="rounded border-gray-700 text-[#FF5A00] bg-[#0B0F17] focus:ring-[#FF5A00]"
-                            />
-                            <span>Enable Trailing Stop Loss</span>
-                          </label>
+                          <div className="space-y-3 pt-2">
+                            <label className="block text-[9px] text-[#FF5A00] uppercase font-bold tracking-widest font-mono">Advanced SL Safeguards</label>
+                            
+                            {/* 1. Trailing Stop Loss */}
+                            <div className="space-y-2.5 bg-[#0B0F17]/60 p-3 rounded-xl border border-slate-800">
+                              <label className="flex items-center space-x-2 text-xs text-gray-300 select-none cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={trailingStopLoss}
+                                  onChange={(e) => setTrailingStopLoss(e.target.checked)}
+                                  className="rounded border-gray-700 text-[#FF5A00] bg-[#0B0F17] focus:ring-[#FF5A00]"
+                                />
+                                <span className="font-semibold text-gray-200">Trailing Stop Loss</span>
+                              </label>
+                              
+                              {trailingStopLoss && (
+                                <div className="space-y-1.5 pt-2 border-t border-slate-800/40">
+                                  <label className="block text-[10px] text-gray-400 uppercase font-bold tracking-wider font-mono">Trailing Distance</label>
+                                  <div className="relative">
+                                    <input
+                                      type="number"
+                                      step="0.1"
+                                      min="0.1"
+                                      value={trailingSlDeviation}
+                                      onChange={(e) => setTrailingSlDeviation(Math.max(0.1, parseFloat(e.target.value) || 0.1))}
+                                      className="w-full bg-[#070a13] border border-gray-800 rounded-lg px-3 py-1.5 text-xs font-semibold text-white focus:outline-none font-mono"
+                                    />
+                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-gray-500 font-mono font-bold">% distance</span>
+                                  </div>
+                                  <span className="text-[9.5px] text-gray-400 block leading-tight">Trails SL level behind the highest peak price to lock in accrued paper profits.</span>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* 2. Move Stop Loss to Breakeven */}
+                            <div className="space-y-2.5 bg-[#0B0F17]/60 p-3 rounded-xl border border-slate-800">
+                              <label className="flex items-center space-x-2 text-xs text-gray-300 select-none cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={slMoveToBreakeven}
+                                  onChange={(e) => setSlMoveToBreakeven(e.target.checked)}
+                                  className="rounded border-gray-700 text-[#FF5A00] bg-[#0B0F17] focus:ring-[#FF5A00]"
+                                />
+                                <span className="font-semibold text-gray-200">Move SL to Breakeven</span>
+                              </label>
+                              
+                              {slMoveToBreakeven && (
+                                <div className="space-y-1.5 pt-2 border-t border-slate-800/40">
+                                  <label className="block text-[10px] text-gray-400 uppercase font-bold tracking-wider font-mono">ROI Trigger Level</label>
+                                  <div className="relative">
+                                    <input
+                                      type="number"
+                                      step="0.1"
+                                      min="0.1"
+                                      value={slBreakevenTrigger}
+                                      onChange={(e) => setSlBreakevenTrigger(Math.max(0.1, parseFloat(e.target.value) || 0.1))}
+                                      className="w-full bg-[#070a13] border border-gray-800 rounded-lg px-3 py-1.5 text-xs font-semibold text-white focus:outline-none font-mono"
+                                    />
+                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-gray-500 font-mono font-bold">% trigger ROI</span>
+                                  </div>
+                                  <span className="text-[9.5px] text-gray-400 block leading-tight">Relocates Stop Loss to entry level immediately upon hitting this actual profit margin.</span>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* 3. Stop Loss Delay Timeout */}
+                            <div className="space-y-2.5 bg-[#0B0F17]/60 p-3 rounded-xl border border-slate-800">
+                              <label className="flex items-center space-x-2 text-xs text-gray-300 select-none cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={slTimeoutEnabled}
+                                  onChange={(e) => setSlTimeoutEnabled(e.target.checked)}
+                                  className="rounded border-gray-700 text-[#FF5A00] bg-[#0B0F17] focus:ring-[#FF5A00]"
+                                />
+                                <span className="font-semibold text-gray-200">Stop Loss Timeout (Delayed SL)</span>
+                              </label>
+                              
+                              {slTimeoutEnabled && (
+                                <div className="space-y-1.5 pt-2 border-t border-slate-800/40">
+                                  <label className="block text-[10px] text-gray-400 uppercase font-bold tracking-wider font-mono">Breach Verification Window</label>
+                                  <div className="relative">
+                                    <input
+                                      type="number"
+                                      step="5"
+                                      min="1"
+                                      value={slTimeoutSeconds}
+                                      onChange={(e) => setSlTimeoutSeconds(Math.max(1, parseInt(e.target.value) || 0))}
+                                      className="w-full bg-[#070a13] border border-gray-800 rounded-lg px-3 py-1.5 text-xs font-semibold text-white focus:outline-none font-mono"
+                                    />
+                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-gray-500 font-mono font-bold">seconds</span>
+                                  </div>
+                                  <span className="text-[9.5px] text-gray-400 block leading-tight">Prevents market noise or brief wicks triggering your stop-loss unless breached for over X seconds.</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -936,15 +1095,96 @@ export function BotCreator({ onSave, onSaveGrid, isSaving, onCancel, botToEdit, 
                 {/* LIMIT RULES */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs text-gray-400 mb-1.5 font-medium">MAX SIMULTANEOUS COIN POSITIONS</label>
+                    <label className="block text-xs text-gray-200 mb-1.5 font-bold font-mono text-[#FF5A00]">MAX SIMULTANEOUS COIN POSITIONS (CUSTOMIZABLE)</label>
                     <input
                       type="number"
                       min="1"
-                      max="15"
+                      placeholder="e.g. 5, 20, 100"
                       value={maxActiveDeals}
                       onChange={(e) => setMaxActiveDeals(Math.max(1, parseInt(e.target.value) || 1))}
-                      className="w-full bg-[#0F141F] border border-[#2D3748] rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF5A00]"
+                      className="w-full bg-[#0F141F] border border-[#2D3748] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF5A00] text-white font-mono"
                     />
+                    <p className="text-[10px] text-gray-500 mt-1.5 leading-normal">
+                      ℹ️ Feel free to customize this threshold to any value (no software lock is applied here). Controls how many concurrent trades this bot can manage simultaneously.
+                    </p>
+                  </div>
+                </div>
+
+                {/* 3COMMAS DCA SAFETY ORDERS CONFIGURATION */}
+                <div className="bg-[#141A29]/40 border border-[#2D3748] rounded-2xl p-5 mt-4 space-y-4">
+                  <div>
+                    <h4 className="text-sm font-bold font-mono text-[#FF5A00] uppercase tracking-wider flex items-center gap-2">
+                      🤖 3Commas DCA Safety Order Configurations
+                    </h4>
+                    <p className="text-xs text-gray-400 mt-1">
+                      Configure safety orders to automatically average down position cost bases when coin prices drift in the adverse direction of open signals.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-[10px] text-gray-400 font-bold uppercase tracking-wider font-mono mb-1">Safety Order Size (USDT)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={safetyOrderSize}
+                        onChange={(e) => setSafetyOrderSize(Math.max(0, parseFloat(e.target.value) || 0))}
+                        className="w-full bg-[#0F141F] border border-gray-800 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#FF5A00] font-mono"
+                      />
+                      <span className="text-[10px] text-gray-500 block mt-1">Initial DCA purchase volume per tier</span>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] text-gray-400 font-bold uppercase tracking-wider font-mono mb-1">Max Safety Orders Count</label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={maxSafetyOrders}
+                        onChange={(e) => setMaxSafetyOrders(Math.max(0, parseInt(e.target.value) || 0))}
+                        className="w-full bg-[#0F141F] border border-gray-800 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#FF5A00] font-mono"
+                      />
+                      <span className="text-[10px] text-gray-500 block mt-1">Maximum allowed DCA refills</span>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] text-gray-400 font-bold uppercase tracking-wider font-mono mb-1">Price Deviation Step (%)</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        min="0.1"
+                        value={priceDeviationStep}
+                        onChange={(e) => setPriceDeviationStep(Math.max(0.1, parseFloat(e.target.value) || 1.0))}
+                        className="w-full bg-[#0F141F] border border-gray-800 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#FF5A00] font-mono"
+                      />
+                      <span className="text-[10px] text-gray-500 block mt-1">Adverse movement triggers SO step</span>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] text-gray-400 font-bold uppercase tracking-wider font-mono mb-1">Safety Order Volume Scale</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        min="0.1"
+                        value={safetyOrderVolumeScale}
+                        onChange={(e) => setSafetyOrderVolumeScale(Math.max(0.1, parseFloat(e.target.value) || 1.0))}
+                        className="w-full bg-[#0F141F] border border-gray-800 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#FF5A00] font-mono"
+                      />
+                      <span className="text-[10px] text-gray-500 block mt-1">Volume multiplier scaling coefficient</span>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] text-gray-400 font-bold uppercase tracking-wider font-mono mb-1">Safety Order Step Scale</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        min="0.1"
+                        value={safetyOrderStepScale}
+                        onChange={(e) => setSafetyOrderStepScale(Math.max(0.1, parseFloat(e.target.value) || 1.0))}
+                        className="w-full bg-[#0F141F] border border-gray-800 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#FF5A00] font-mono"
+                      />
+                      <span className="text-[10px] text-gray-500 block mt-1">Multiplier scaling the step deviation spacing</span>
+                    </div>
                   </div>
                 </div>
 

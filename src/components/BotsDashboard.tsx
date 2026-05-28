@@ -211,8 +211,8 @@ if (sellSignal)
       
       {/* Real exchange connect balance panel */}
       {exchangeCredentials.length > 0 && (
-        <div className="bg-gradient-to-r from-emerald-950/25 to-[#121824] border border-emerald-500/20 rounded-2xl p-5 shadow-lg">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-850/60 pb-4">
+        <div className="bg-gradient-to-r from-emerald-950/25 to-[#121824] border border-emerald-500/20 rounded-2xl p-5 shadow-lg space-y-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800/60 pb-4">
             <div className="flex items-start gap-3">
               <div className="bg-emerald-500/10 text-emerald-400 p-2.5 rounded-xl border border-emerald-500/20">
                 <Shield className="w-5.5 h-5.5" />
@@ -220,63 +220,116 @@ if (sellSignal)
               <div>
                 <h4 className="text-sm font-bold text-white tracking-tight flex items-center gap-2">
                   <span>Exchange Multi-Channel Terminal</span>
-                  <span className="bg-emerald-500/10 text-emerald-400 text-[10px] uppercase font-mono px-2 py-0.5 rounded-full border border-emerald-500/20">Active Conn</span>
+                  <span className="bg-emerald-500/10 text-emerald-400 text-[10px] uppercase font-mono px-2 py-0.5 rounded-full border border-emerald-500/20 font-bold">Active Connection Gateway</span>
                 </h4>
-                <p className="text-xs text-slate-300 mt-1">Showing real account balances secured by registered sub-API channels.</p>
+                <p className="text-xs text-slate-300 mt-1">Showing real account balances secured by registered sub-API channels. Withdrawals disabled across all connected keys.</p>
               </div>
             </div>
-            <div className="text-right">
-              <span className="text-[10px] text-gray-500 font-mono block font-bold">AGGREGATE REAL BALANCE</span>
-              <span className="text-lg font-bold font-mono text-emerald-450 text-emerald-400">
-                ${realBalance.toLocaleString('en-US', { minimumFractionDigits: 2 })} USDT
-              </span>
+            <div className="flex flex-wrap gap-4 text-right">
+              <div className="bg-[#0B0F17]/60 border border-slate-800 rounded-lg p-2 px-3 text-left">
+                <span className="text-[9px] text-gray-500 font-mono block font-bold uppercase tracking-wider">AGGREGATE CAPITAL</span>
+                <span className="text-base font-bold font-mono text-emerald-400">
+                  ${realBalance.toLocaleString('en-US', { minimumFractionDigits: 2 })} USDT
+                </span>
+              </div>
+              <div className="bg-[#0B0F17]/60 border border-slate-800 rounded-lg p-2 px-3 text-left">
+                <span className="text-[9px] text-sky-400 font-mono block font-bold uppercase tracking-wider">AVAILABLE FUNDS</span>
+                <span className="text-base font-bold font-mono text-sky-400">
+                  ${exchangeCredentials.filter(c => c.isEnabled).reduce((sum, c) => sum + (c.remainingBalance ?? c.balance ?? 0), 0).toLocaleString('en-US', { minimumFractionDigits: 2 })} USDT
+                </span>
+              </div>
+              <div className="bg-[#0B0F17]/60 border border-slate-800 rounded-lg p-2 px-3 text-left">
+                <span className="text-[9px] text-orange-400 font-mono block font-bold uppercase tracking-wider">UTILIZED MARGIN</span>
+                <span className="text-base font-bold font-mono text-orange-400">
+                  ${exchangeCredentials.filter(c => c.isEnabled).reduce((sum, c) => sum + ((c.realBalance ?? c.balance ?? 0) - (c.remainingBalance ?? c.balance ?? 0)), 0).toLocaleString('en-US', { minimumFractionDigits: 2 })} USDT
+                </span>
+              </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 mt-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 mt-2">
             {exchangeCredentials.map((cred) => {
+              const utilizedMargin = (cred.realBalance ?? cred.balance ?? 0) - (cred.remainingBalance ?? cred.balance ?? 0);
               return (
-                <div key={cred.id} id={`dashboard_exchange_${cred.id}`} className="bg-[#0B0F17]/80 border border-slate-800/85 p-4 rounded-xl flex flex-col space-y-2">
+                <div key={cred.id} id={`dashboard_exchange_${cred.id}`} className="bg-[#0B0F17]/85 border border-slate-850 p-4 rounded-xl flex flex-col space-y-2.5">
                   <div className="flex justify-between items-start">
                     <div className="space-y-0.5">
                       <span className="text-xs font-bold text-white block leading-tight">{cred.name}</span>
                       <span className="text-[9px] text-slate-500 font-mono block">
-                        {(cred.apiKey || '').substring(0, 10)}... (Withdrawal Blocked ✅)
+                        {(cred.apiKey || '').substring(0, 10)}... (Withdrawals Blocked ✅)
                       </span>
                     </div>
                     <span className={`inline-block text-[9px] font-mono px-2 py-0.5 rounded font-bold uppercase ${cred.isEnabled ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'}`}>
-                      {cred.isEnabled ? 'Active' : 'Paused'}
+                      {cred.isEnabled ? 'Active Link' : 'Paused Link'}
                     </span>
                   </div>
                   
-                  <div className="grid grid-cols-2 gap-2 pt-1.5 text-[11px] font-mono border-t border-slate-800/50 leading-tight">
+                  {/* Detailed Partition */}
+                  <div className="grid grid-cols-2 gap-2 pt-2 text-[11px] font-mono border-t border-slate-800/60 leading-tight">
                     <div>
-                      <span className="text-[9px] text-slate-500 block">REAL CAPITAL</span>
-                      <span className="text-white font-semibold">
+                      <span className="text-[9px] text-slate-550 text-gray-400 block uppercase font-semibold">TOTAL REAL CAPITAL</span>
+                      <span className="text-white font-black text-sm block mt-0.5">
                         ${(cred.realBalance ?? cred.balance ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </span>
                     </div>
                     <div>
-                      <span className="text-[9px] text-sky-400 block">REMAINING</span>
-                      <span className="text-sky-400 font-bold">
+                      <span className="text-[9px] text-sky-400 block uppercase font-bold">AVAILABLE FUNDS</span>
+                      <span className="text-sky-400 font-black text-sm block mt-0.5">
                         ${(cred.remainingBalance ?? cred.balance ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-[10px] font-mono leading-tight bg-[#04060A]/80 p-2 rounded-lg border border-slate-900">
+                    <div>
+                      <span className="text-[8px] text-orange-400 block uppercase font-bold">REMAINING MARGIN</span>
+                      <span className="text-orange-400 font-semibold block mt-0.5">
+                        ${(cred.remainingBalance ?? cred.balance ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[8px] text-indigo-400 block uppercase font-bold">UTILIZED MARGIN</span>
+                      <span className="text-slate-300 font-semibold block mt-0.5">
+                        ${utilizedMargin.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </span>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-2 text-[10px] font-mono leading-tight">
                     <div>
-                      <span className="text-[8px] text-slate-500 block">SPOT</span>
+                      <span className="text-[8px] text-slate-500 block">SPOT BALANCE</span>
                       <span className="text-slate-300 font-medium">
                         ${(cred.spotBalance ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </span>
                     </div>
                     <div>
-                      <span className="text-[8px] text-indigo-400 block">FUTURES</span>
+                      <span className="text-[8px] text-indigo-400 block">FUTURES BALANCE</span>
                       <span className="text-slate-300 font-medium">
                         ${(cred.futuresBalance ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </span>
                     </div>
+                  </div>
+
+                  {/* Detailed Connection Protocol status */}
+                  <div className="flex flex-wrap items-center gap-1.5 pt-1 pb-1 border-t border-slate-900 font-mono">
+                    <span className="bg-orange-500/10 text-orange-400 border border-orange-500/20 text-[8px] font-bold uppercase px-1.5 py-0.5 rounded flex items-center gap-1">
+                      <span className="w-1 h-1 rounded-full bg-orange-400 animate-pulse"></span>
+                      REST HTTPS (Sig OK)
+                    </span>
+                    <span className="bg-sky-500/10 text-sky-400 border border-sky-500/20 text-[8px] font-bold uppercase px-1.5 py-0.5 rounded flex items-center gap-1">
+                      <span className={`w-1 h-1 rounded-full ${
+                        (cred.protocol || 'REST+WS') === 'REST+WS' && cred.isEnabled ? 'bg-sky-400 animate-pulse' : 'bg-slate-500'
+                      }`}></span>
+                      WS: {(cred.protocol || 'REST+WS') === 'REST+WS' ? 'ACTIVE STREAM' : 'POLLING'}
+                    </span>
+                    <span className="bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-[8px] font-bold uppercase px-1.5 py-0.5 rounded flex items-center gap-1">
+                      {cred.authMethod === 'Ed25519_Signature' ? 'ED25519 ECC' : 'HMAC-SHA256'}
+                    </span>
+                  </div>
+
+                  <div className="text-[9.5px] text-rose-400 font-bold bg-[#FF2D55]/5 border border-[#FF2D55]/10 rounded px-2 py-1 flex items-center gap-1.5 mt-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                    <span>WITHDRAWAL RESTRICTION: CONFIRMED DISABLED 🛡️</span>
                   </div>
                 </div>
               );
@@ -688,24 +741,48 @@ if (sellSignal)
                             {bot.takeProfitType === 'multiple' ? (
                               <div className="text-emerald-400 text-xs leading-tight space-y-0.5 mt-1">
                                 <span className="block text-emerald-400 font-bold">Multi-TP Tiered:</span>
-                                <span className="block text-[11px] text-emerald-500/90">• TP1: +{bot.tp1Value}% ({bot.tp1Size}%)</span>
-                                <span className="block text-[11px] text-emerald-500/90">• TP2: +{bot.tp2Value}% ({bot.tp2Size}%)</span>
-                                <span className="block text-[11px] text-emerald-500/90">• TP3: +{bot.tp3Value}% ({bot.tp3Size}%)</span>
-                                <span className="block text-[10px] text-gray-500 font-normal mt-0.5">Deviation: {bot.trailingTpDeviation}%</span>
+                                {bot.tp1Value !== undefined && <span className="block text-[11px] text-emerald-500/90">• TP1: +{bot.tp1Value}% ({bot.tp1Size}%)</span>}
+                                {bot.tp2Value !== undefined && <span className="block text-[11px] text-emerald-500/90">• TP2: +{bot.tp2Value}% ({bot.tp2Size}%)</span>}
+                                {bot.tp3Value !== undefined && <span className="block text-[11px] text-emerald-500/90">• TP3: +{bot.tp3Value}% ({bot.tp3Size}%)</span>}
+                                <span className="block text-[10px] text-gray-400 font-normal mt-0.5">Trailing Deviation: {bot.trailingTpDeviation || 0.2}%</span>
                               </div>
                             ) : bot.takeProfitValue > 0 ? (
-                              <span className="text-emerald-400">+{bot.takeProfitValue}% {bot.trailingTakeProfit && <strong className="text-[10px] text-zinc-400">(Trailing)</strong>}</span>
+                              <div className="text-emerald-400 text-xs font-mono">
+                                <div>+{bot.takeProfitValue}%</div>
+                                {bot.trailingTakeProfit && (
+                                  <div className="text-[10px] text-[#A0AEC0] font-sans font-normal mt-0.5">
+                                    Trailing Callback: {bot.trailingTpDeviation !== undefined ? bot.trailingTpDeviation : 0.2}%
+                                  </div>
+                                )}
+                              </div>
                             ) : (
-                              <span className="text-zinc-500">None</span>
+                              <span className="text-zinc-100">None</span>
                             )}
                           </span>
                         </div>
 
                         <div>
                           <span className="text-gray-400 block font-medium">Automatic Stop Loss</span>
-                          <span className="text-white mt-1 font-mono font-bold block flex items-center gap-1">
+                          <span className="text-white mt-1 font-mono font-bold block">
                             {bot.stopLossValue > 0 ? (
-                              <span className="text-rose-400">-{bot.stopLossValue}% {bot.trailingStopLoss && <strong className="text-[10px] text-zinc-400">(Trailing)</strong>}</span>
+                              <div className="text-rose-400 text-xs font-mono">
+                                <div>-{bot.stopLossValue}%</div>
+                                {bot.trailingStopLoss && (
+                                  <div className="text-[10px] text-[#A0AEC0] font-sans font-normal mt-0.5">
+                                    Trailing Distance: {bot.trailingSlDeviation !== undefined ? bot.trailingSlDeviation : bot.stopLossValue}%
+                                  </div>
+                                )}
+                                {bot.slMoveToBreakeven && (
+                                  <div className="text-[10px] text-[#FF5A00]/80 font-sans font-medium mt-0.5">
+                                    🛡️ Breakeven Trigger: +{bot.slBreakevenTrigger}%
+                                  </div>
+                                )}
+                                {bot.slTimeoutEnabled && (
+                                  <div className="text-[10px] text-[#C0C0C0] font-sans font-normal mt-0.5">
+                                    ⏱️ Delay Timeout: {bot.slTimeoutSeconds}s
+                                  </div>
+                                )}
+                              </div>
                             ) : (
                               <span className="text-zinc-500">None</span>
                             )}

@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 
 interface LoginScreenProps {
-  onLoginSuccess: (user: { username: string; email?: string; phone?: string; isAdmin?: boolean }, state: any) => void;
+  onLoginSuccess: (user: { username: string; email?: string; phone?: string; isAdmin?: boolean; password?: string }, state: any) => void;
 }
 
 export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
@@ -220,7 +220,7 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
 
       const data = await res.json();
       if (res.ok && data.success) {
-        onLoginSuccess(data.user, data.state);
+        onLoginSuccess({ ...data.user, password: password.trim() }, data.state);
       } else {
         setErrorMsg(data.error || 'Authentication credentials rejected.');
       }
@@ -517,6 +517,9 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                   </div>
                   <span className="text-[9.5px] text-gray-500 block leading-normal">
                     * GDPR compliant verification: Security system generates stateful tokens with a strict 10-minute expiry range.
+                  </span>
+                  <span className="text-[10px] text-orange-400 font-mono font-semibold block leading-normal mt-1.5 p-2 bg-[#FF5A00]/5 border border-[#FF5A00]/10 rounded-lg">
+                    💡 SANDBOX HINT: Enter your EXACT registered email address (e.g. <b>demo@example.com</b> for the demo user, or your own profile email) to generate and display the recovery token instantly in the simulator below!
                   </span>
                 </div>
 

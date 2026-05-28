@@ -5,7 +5,7 @@
       "password": "demo",
       "state": {
         "balance": 12030.03,
-        "realBalance": 50000,
+        "realBalance": 12501.23,
         "accountMode": "paper",
         "exchangeCredentials": [
           {
@@ -16,11 +16,15 @@
             "isEnabled": true,
             "createdAt": "2026-05-23T03:36:51.447Z",
             "withdrawalDisabled": true,
-            "balance": 12500.15,
-            "spotBalance": 5000.15,
-            "futuresBalance": 7500,
-            "realBalance": 12500.15,
-            "remainingBalance": 12500.15
+            "balance": 12501.23,
+            "spotBalance": 5001.13,
+            "futuresBalance": 7500.1,
+            "realBalance": 12501.23,
+            "remainingBalance": 12501.23,
+            "protocol": "REST+WS",
+            "authMethod": "Sha256_Signature",
+            "wsStatus": "Connected",
+            "lastSyncTimestamp": "2026-05-27T08:31:55.630Z"
           }
         ],
         "activeDeals": [],
@@ -1128,7 +1132,12 @@
             "message": "🤖 GRID BOT [Infinity BTC Grid Scalper]: Captured price swing! Filled BUY limit order at $99,750 on BTC/USDT. Arbitrage ROI: +$1.17 USDT."
           }
         ]
-      }
+      },
+      "isAdmin": true,
+      "email": "demo@example.com",
+      "phone": "+15550199"
     }
-  }
+  },
+  "auditLogs": [],
+  "resetTokens": []
 }

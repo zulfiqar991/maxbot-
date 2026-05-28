@@ -23,6 +23,11 @@ export interface SignalBot {
   stopLossType: 'percent' | 'none';
   stopLossValue: number; // e.g., 1.5%
   trailingStopLoss: boolean;
+  trailingSlDeviation?: number;
+  slMoveToBreakeven?: boolean;
+  slBreakevenTrigger?: number;
+  slTimeoutEnabled?: boolean;
+  slTimeoutSeconds?: number;
   maxActiveDeals: number;
   webhookToken: string;
   createdAt: string;
@@ -30,6 +35,13 @@ export interface SignalBot {
   pineTimeframe?: string;
   pineCondition?: string;
   pineScriptCode?: string;
+  // 3Commas DCA settings
+  baseOrderSize?: number;
+  safetyOrderSize?: number;
+  priceDeviationStep?: number;
+  maxSafetyOrders?: number;
+  safetyOrderVolumeScale?: number;
+  safetyOrderStepScale?: number;
 }
 
 export interface GridLine {
@@ -79,11 +91,35 @@ export interface Deal {
   tp2Hit?: boolean;
   tp3Hit?: boolean;
   takeProfitType?: 'percent' | 'none' | 'multiple';
+  takeProfitPercent?: number;
   stopLossPrice: number | null;
+  stopLossPercent?: number;
+  trailingStopLoss?: boolean;
+  trailingSlDeviation?: number;
+  slMoveToBreakeven?: boolean;
+  slBreakevenTrigger?: number;
+  slBreakevenTriggered?: boolean;
+  slTimeoutEnabled?: boolean;
+  slTimeoutSeconds?: number;
+  slBreachedAt?: string;
+  trailingTakeProfit?: boolean;
+  trailingTpDeviation?: number;
+  trailingTpActivated?: boolean;
+  trailingTpPeakPrice?: number;
   pnl: number; // USD
   pnlPercent: number; // %
   createdAt: string;
   updatedAt: string;
+  // 3Commas DCA Live tracking
+  initialEntryPrice?: number;
+  avgEntryPrice?: number;
+  totalBaseAndSafetySpent?: number;
+  safetyOrderSize?: number;
+  priceDeviationStep?: number;
+  maxSafetyOrders?: number;
+  safetyOrderVolumeScale?: number;
+  safetyOrderStepScale?: number;
+  safetyOrdersFilled?: number;
 }
 
 export interface SignalLog {
@@ -113,6 +149,13 @@ export interface ExchangeCredential {
   realBalance?: number;      // Total real balance (spot + futures)
   remainingBalance?: number; // Available balance after margin deductions
   withdrawalDisabled?: boolean; // Secure API withdrawal status indicator
+  protocol?: 'REST+WS' | 'HTTPS_ONLY'; // Connection Protocol
+  authMethod?: 'Sha256_Signature' | 'Ed25519_Signature'; // Auth signature method
+  wsStatus?: 'Connected' | 'Idle' | 'Offline'; // Real-time WebSocket connection state
+  lastSyncTimestamp?: string; // Last Live REST Sync Timestamp
+  customRestUrl?: string; // Customizable REST API endpoint base URL
+  customWsUrl?: string;   // Customizable WebSocket gateway URL
+  customDemoPortalUrl?: string; // Customizable Demo/Sandbox Web Portal URL
 }
 
 export interface AccountState {
@@ -132,4 +175,5 @@ export interface AccountState {
   smsEnabled?: boolean;
   smsPhone?: string;
   tradingViewWebhooksEnabled?: boolean;
+  customRoutingPrompt?: string;
 }

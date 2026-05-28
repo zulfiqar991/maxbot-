@@ -241,7 +241,7 @@ export function runSimulationTick() {
     // 1. Maintain all exchange API credentials, keeping balances and remaining balances synchronized in real time
     if (state.exchangeCredentials && state.exchangeCredentials.length > 0) {
       state.exchangeCredentials.forEach(cred => {
-        // Secure API handling with withdrawal permissions disabled
+        // Enforce secure API handling with withdrawal permissions disabled
         cred.withdrawalDisabled = true;
 
         const total = cred.balance !== undefined ? cred.balance : 12500;
@@ -249,15 +249,54 @@ export function runSimulationTick() {
           cred.balance = total;
         }
 
-        // Partition spot and futures if not set
-        if (cred.spotBalance === undefined) {
-          cred.spotBalance = parseFloat((total * 0.4).toFixed(2));
-        }
-        if (cred.futuresBalance === undefined) {
-          cred.futuresBalance = parseFloat((total * 0.6).toFixed(2));
+        // Fix: connection parameters mapped to specific exchange characteristics
+        let spotScale = 0.40;
+        let futuresScale = 0.60;
+        const lowerName = (cred.name || '').toLowerCase();
+        
+        if (lowerName.includes('binance')) {
+          spotScale = 0.45;
+          futuresScale = 0.55;
+        } else if (lowerName.includes('bybit')) {
+          spotScale = 0.35;
+          futuresScale = 0.65;
+        } else if (lowerName.includes('kucoin') || lowerName.includes('ku')) {
+          spotScale = 0.55;
+          futuresScale = 0.45;
+        } else if (lowerName.includes('okx')) {
+          spotScale = 0.40;
+          futuresScale = 0.60;
+        } else if (lowerName.includes('gate.io') || lowerName.includes('gate')) {
+          spotScale = 0.50;
+          futuresScale = 0.50;
+        } else if (lowerName.includes('weex')) {
+          spotScale = 0.30;
+          futuresScale = 0.70;
         }
 
-        // Live drift updates in real-time (micro-variations for live look)
+        // Initialize connection protocols and secure traits if missing
+        if (!cred.protocol) {
+          cred.protocol = 'REST+WS';
+        }
+        if (!cred.authMethod) {
+          cred.authMethod = 'Sha256_Signature';
+        }
+        if (!cred.wsStatus) {
+          cred.wsStatus = cred.isEnabled ? 'Connected' : 'Offline';
+        }
+        if (!cred.lastSyncTimestamp) {
+          cred.lastSyncTimestamp = new Date().toISOString();
+        }
+
+        // Partition spot and futures partitions with fixed ratios
+        if (cred.spotBalance === undefined) {
+          cred.spotBalance = parseFloat((total * spotScale).toFixed(2));
+        }
+        if (cred.futuresBalance === undefined) {
+          cred.futuresBalance = parseFloat((total * futuresScale).toFixed(2));
+        }
+
+        // Live drift updates in real-time (micro-variations for high-fidelity interactive look)
         if (cred.isEnabled) {
           const driftSpot = (Math.random() * 2 - 1) * 0.05;
           const driftFut = (Math.random() * 2 - 1) * 0.05;
@@ -283,6 +322,7 @@ export function runSimulationTick() {
             botEx.includes(exName) ||
             (exName.includes('binance') && botEx.includes('binance')) ||
             (exName.includes('bybit') && botEx.includes('bybit')) ||
+            (exName.includes('kucoin') && botEx.includes('kucoin')) ||
             (exName.includes('okx') && botEx.includes('okx')) ||
             (exName.includes('gate') && botEx.includes('gate')) ||
             (exName.includes('weex') && botEx.includes('weex'))
@@ -294,6 +334,13 @@ export function runSimulationTick() {
         
         userUpdated = true;
       });
+
+      // Synchronize the master state's realBalance in real time
+      const enabledCreds = state.exchangeCredentials.filter(c => c.isEnabled);
+      if (enabledCreds.length > 0) {
+        const summedReal = enabledCreds.reduce((sum, c) => sum + (c.realBalance || c.balance || 0), 0);
+        state.realBalance = parseFloat(summedReal.toFixed(2));
+      }
     }
 
     // A. Verify active deals
@@ -307,6 +354,148 @@ export function runSimulationTick() {
         deal.currentPrice = currentPrice;
         deal.updatedAt = new Date().toISOString();
 
+        const relatedBot = state.bots?.find(b => b.id === deal.botId);
+        const userMode = state.accountMode || 'paper';
+
+        // --- 3COMMAS DCA SAFETY ORDER LOGIC ---
+        const maxSO = deal.maxSafetyOrders !== undefined ? deal.maxSafetyOrders : (relatedBot?.maxSafetyOrders || 0);
+        const currentFilled = deal.safetyOrdersFilled || 0;
+
+        if (maxSO > 0 && currentFilled < maxSO) {
+          const nextSoIndex = currentFilled + 1;
+          const soSize = deal.safetyOrderSize !== undefined ? deal.safetyOrderSize : (relatedBot?.safetyOrderSize || 0);
+          const devStep = deal.priceDeviationStep !== undefined ? deal.priceDeviationStep : (relatedBot?.priceDeviationStep || 2.0);
+          const volScale = deal.safetyOrderVolumeScale !== undefined ? deal.safetyOrderVolumeScale : (relatedBot?.safetyOrderVolumeScale || 1.5);
+          const stepScale = deal.safetyOrderStepScale !== undefined ? deal.safetyOrderStepScale : (relatedBot?.safetyOrderStepScale || 1.0);
+          const initialPrice = deal.initialEntryPrice || deal.entryPrice;
+
+          // Calculate cumulative deviation for safety order stage 'nextSoIndex'
+          let cumulativeDeviationPercent = 0;
+          for (let i = 1; i <= nextSoIndex; i++) {
+            if (i === 1) {
+              cumulativeDeviationPercent += devStep;
+            } else {
+              cumulativeDeviationPercent += devStep * Math.pow(stepScale, i - 1);
+            }
+          }
+
+          // Trigger target price depending on long/short selection
+          const isLong = deal.type === 'long';
+          const triggerPrice = isLong 
+            ? initialPrice * (1 - cumulativeDeviationPercent / 100)
+            : initialPrice * (1 + cumulativeDeviationPercent / 100);
+
+          const isTriggered = isLong 
+            ? currentPrice <= triggerPrice 
+            : currentPrice >= triggerPrice;
+
+          if (isTriggered && soSize > 0) {
+            // Calculate size for this specific safety order order
+            const currentSoVolume = soSize * Math.pow(volScale, nextSoIndex - 1);
+
+            let hasFunds = false;
+            if (userMode === 'real') {
+              const currentBalance = state.realBalance || 0;
+              if (currentBalance >= currentSoVolume) {
+                state.realBalance = parseFloat((currentBalance - currentSoVolume).toFixed(2));
+                hasFunds = true;
+              }
+            } else {
+              const currentBalance = state.balance || 0;
+              if (currentBalance >= currentSoVolume) {
+                state.balance = parseFloat((currentBalance - currentSoVolume).toFixed(2));
+                hasFunds = true;
+              }
+            }
+
+            if (hasFunds) {
+              const oldAvgEntry = deal.avgEntryPrice || deal.entryPrice;
+              const prevSpent = deal.totalBaseAndSafetySpent || deal.volume;
+              
+              deal.totalBaseAndSafetySpent = prevSpent + currentSoVolume;
+              
+              // Calculate asset additions
+              const additionalAsset = (currentSoVolume * deal.leverage) / currentPrice;
+              deal.amountAsset = (deal.amountAsset || 0) + additionalAsset;
+              
+              // New avg entry price
+              deal.avgEntryPrice = (deal.totalBaseAndSafetySpent * deal.leverage) / deal.amountAsset;
+              
+              // Update official variables
+              deal.volume = deal.totalBaseAndSafetySpent;
+              deal.entryPrice = deal.avgEntryPrice;
+              deal.safetyOrdersFilled = nextSoIndex;
+
+              // Recalculate Stop Loss if active
+              if (deal.stopLossPrice && deal.stopLossPercent) {
+                const slPercent = deal.stopLossPercent;
+                deal.stopLossPrice = isLong
+                  ? parseFloat((deal.avgEntryPrice * (1 - slPercent / 100)).toFixed(4))
+                  : parseFloat((deal.avgEntryPrice * (1 + slPercent / 100)).toFixed(4));
+              }
+
+              // Recalculate Take Profit (recalculated from new lowered avg entry cost base)
+              const tpPercent = deal.takeProfitPercent || (relatedBot?.takeProfitValue || 3.0);
+              deal.takeProfitPercent = tpPercent;
+
+              if (deal.takeProfitType === 'multiple') {
+                const tp1Val = relatedBot?.tp1Value || 2.0;
+                const tp2Val = relatedBot?.tp2Value || 4.0;
+                const tp3Val = relatedBot?.tp3Value || 6.0;
+                if (isLong) {
+                  deal.tp1Price = parseFloat((deal.avgEntryPrice * (1 + tp1Val / 100)).toFixed(4));
+                  deal.tp2Price = parseFloat((deal.avgEntryPrice * (1 + tp2Val / 100)).toFixed(4));
+                  deal.tp3Price = parseFloat((deal.avgEntryPrice * (1 + tp3Val / 100)).toFixed(4));
+                } else {
+                  deal.tp1Price = parseFloat((deal.avgEntryPrice * (1 - tp1Val / 100)).toFixed(4));
+                  deal.tp2Price = parseFloat((deal.avgEntryPrice * (1 - tp2Val / 100)).toFixed(4));
+                  deal.tp3Price = parseFloat((deal.avgEntryPrice * (1 - tp3Val / 100)).toFixed(4));
+                }
+                // Update active target
+                if (!deal.tp1Hit) deal.takeProfitPrice = deal.tp1Price;
+                else if (!deal.tp2Hit) deal.takeProfitPrice = deal.tp2Price;
+                else deal.takeProfitPrice = deal.tp3Price;
+              } else if (deal.takeProfitPrice !== null) {
+                deal.takeProfitPrice = isLong
+                  ? parseFloat((deal.avgEntryPrice * (1 + tpPercent / 100)).toFixed(4))
+                  : parseFloat((deal.avgEntryPrice * (1 - tpPercent / 100)).toFixed(4));
+              }
+
+              state.logs.unshift({
+                id: 'log-so-fill-' + Math.random().toString(36).substring(2, 9),
+                botId: deal.botId,
+                botName: deal.botName,
+                timestamp: new Date().toISOString(),
+                pair: deal.pair,
+                action: 'safety_order_filled',
+                payload: JSON.stringify({ index: nextSoIndex, size: currentSoVolume, trigger: triggerPrice, current: currentPrice, oldAvg: oldAvgEntry, newAvg: deal.avgEntryPrice }),
+                status: 'success',
+                message: `🤖 [3COMMAS DCA] SAFETY ORDER #${nextSoIndex} EXECUTED: Buy trigger reached at $${triggerPrice.toLocaleString()} for ${deal.pair}! Filled size: +$${currentSoVolume.toFixed(2)} USDT. Cost basis averaged down from $${oldAvgEntry.toLocaleString()} to $${deal.avgEntryPrice.toLocaleString()}. TP relocated to $${deal.takeProfitPrice?.toLocaleString()} (Averaged target: ${tpPercent}%).`
+              });
+
+              userUpdated = true;
+            } else {
+              // Create unique log trigger for funding warning to avoid excessive ticker spam
+              const logKey = `fail_log_so_${deal.id}_${nextSoIndex}`;
+              if (!(deal as any)[logKey]) {
+                (deal as any)[logKey] = true;
+                state.logs.unshift({
+                  id: 'log-so-fail-' + Math.random().toString(36).substring(2, 9),
+                  botId: deal.botId,
+                  botName: deal.botName,
+                  timestamp: new Date().toISOString(),
+                  pair: deal.pair,
+                  action: 'safety_order_insufficient_funds',
+                  payload: JSON.stringify({ index: nextSoIndex, required: currentSoVolume }),
+                  status: 'error',
+                  message: `🚨 [3COMMAS DCA] SAFETY ORDER #${nextSoIndex} SKIPPED: Insufficient balance. Volume required: $${currentSoVolume.toFixed(2)} USDT. Top up wallet to resume automatic average downs.`
+                });
+                userUpdated = true;
+              }
+            }
+          }
+        }
+
         // Calculate ROI PnL
         const diffRatio = (currentPrice - deal.entryPrice) / deal.entryPrice;
         if (deal.type === 'long') {
@@ -316,14 +505,98 @@ export function runSimulationTick() {
         }
         deal.pnl = (deal.pnlPercent / 100) * deal.volume;
 
+        const deviationPercent = deal.trailingTpDeviation !== undefined 
+          ? deal.trailingTpDeviation 
+          : (relatedBot?.trailingTpDeviation !== undefined ? relatedBot.trailingTpDeviation : 0.2);
+
+        if (relatedBot) {
+          // Stop Loss to Breakeven trigger check
+          const isSlMoveToBreakeven = deal.slMoveToBreakeven !== undefined ? deal.slMoveToBreakeven : relatedBot.slMoveToBreakeven;
+          if (isSlMoveToBreakeven && !deal.slBreakevenTriggered && deal.stopLossPrice) {
+            const breakevenTriggerPercent = deal.slBreakevenTrigger !== undefined 
+              ? deal.slBreakevenTrigger 
+              : (relatedBot.slBreakevenTrigger || 2.0);
+            
+            if (deal.pnlPercent >= breakevenTriggerPercent) {
+              deal.slBreakevenTriggered = true;
+              const oldSL = deal.stopLossPrice;
+              deal.stopLossPrice = deal.entryPrice;
+              state.logs.unshift({
+                id: 'log-breakeven-sl-' + Math.random().toString(36).substring(2, 9),
+                botId: deal.botId,
+                botName: deal.botName,
+                timestamp: new Date().toISOString(),
+                pair: deal.pair,
+                action: 'adjust_stop_loss',
+                payload: JSON.stringify({ old_sl: oldSL, new_sl: deal.stopLossPrice, pnlPercent: deal.pnlPercent }),
+                status: 'success',
+                message: `🛡️ [Stop Loss Breakeven] Position on ${deal.pair} reached profit threshold of +${deal.pnlPercent.toFixed(2)}% (Trigger: ${breakevenTriggerPercent}%). Stop Loss was successfully relocated to Breakeven Entry level: $${deal.entryPrice.toLocaleString()}.`
+              });
+              userUpdated = true;
+            }
+          }
+
+          // 1. Dynamic Trailing Stop Loss (runs while deal is active and trailing SL option is enabled)
+          const isTrailingStopLossEnabled = deal.trailingStopLoss !== undefined ? deal.trailingStopLoss : relatedBot.trailingStopLoss;
+          if (isTrailingStopLossEnabled && deal.stopLossPrice) {
+            const slPercent = deal.trailingSlDeviation !== undefined 
+              ? deal.trailingSlDeviation 
+              : (relatedBot.trailingSlDeviation !== undefined 
+                ? relatedBot.trailingSlDeviation 
+                : (deal.stopLossPercent || relatedBot.stopLossValue || 1.5));
+            if (deal.type === 'long') {
+              const slThreshold = currentPrice * (1 - slPercent / 100);
+              if (slThreshold > deal.stopLossPrice) {
+                const oldSL = deal.stopLossPrice;
+                deal.stopLossPrice = parseFloat(slThreshold.toFixed(4));
+                state.logs.unshift({
+                  id: 'log-trail-sl-' + Math.random().toString(36).substring(2, 9),
+                  botId: deal.botId,
+                  botName: deal.botName,
+                  timestamp: new Date().toISOString(),
+                  pair: deal.pair,
+                  action: 'adjust_stop_loss',
+                  payload: JSON.stringify({ old_sl: oldSL, new_sl: deal.stopLossPrice, cur_price: currentPrice }),
+                  status: 'success',
+                  message: `📈 [3COMMAS TRAILING SL] LONG POSITION ADAPTED: Trailed Stop Loss higher from ${oldSL.toLocaleString()} to ${deal.stopLossPrice.toLocaleString()} following ${deal.pair} upward momentum at ${currentPrice.toLocaleString()} (Strict SL: ${slPercent}%).`
+                });
+              }
+            } else {
+              const slThreshold = currentPrice * (1 + slPercent / 100);
+              if (slThreshold < deal.stopLossPrice) {
+                const oldSL = deal.stopLossPrice;
+                deal.stopLossPrice = parseFloat(slThreshold.toFixed(4));
+                state.logs.unshift({
+                  id: 'log-trail-sl-' + Math.random().toString(36).substring(2, 9),
+                  botId: deal.botId,
+                  botName: deal.botName,
+                  timestamp: new Date().toISOString(),
+                  pair: deal.pair,
+                  action: 'adjust_stop_loss',
+                  payload: JSON.stringify({ old_sl: oldSL, new_sl: deal.stopLossPrice, cur_price: currentPrice }),
+                  status: 'success',
+                  message: `📉 [3COMMAS TRAILING SL] SHORT POSITION ADAPTED: Trailed Stop Loss lower from ${oldSL.toLocaleString()} to ${deal.stopLossPrice.toLocaleString()} following ${deal.pair} downward momentum at ${currentPrice.toLocaleString()} (Strict SL: ${slPercent}%).`
+                });
+              }
+            }
+          }
+        }
+
         userUpdated = true;
 
-        // Check liquidation
+        // 2. Check liquidation boundary (futures leverage hazard)
         if (deal.leverage > 1 && deal.pnlPercent <= -90) {
           deal.status = 'liquidated';
           deal.pnl = -deal.volume;
           deal.pnlPercent = -100;
           deal.exitPrice = currentPrice;
+
+          const closedVol = deal.volume;
+          if (userMode === 'real') {
+            state.realBalance = parseFloat((Math.max(0, (state.realBalance || 50000) - closedVol)).toFixed(2));
+          } else {
+            state.balance = parseFloat((Math.max(0, state.balance - closedVol)).toFixed(2));
+          }
 
           state.logs.unshift({
             id: 'log-liq-' + Math.random().toString(36).substring(2, 9),
@@ -332,152 +605,411 @@ export function runSimulationTick() {
             timestamp: new Date().toISOString(),
             pair: deal.pair,
             action: deal.type === 'long' ? 'exit_long' : 'exit_short',
-            payload: '{"event": "liquidation"}',
+            payload: JSON.stringify({ event: "liquidation", leverage: deal.leverage, entry: deal.entryPrice, exit: currentPrice }),
             status: 'error',
-            message: `🚨 POSITION LIQUIDATED: ${deal.type.toUpperCase()} position on ${deal.pair} hit liquidation boundary. Loss: -$${deal.volume.toFixed(2)} USD.`
+            message: `🚨 POSITION LIQUIDATED: ${deal.type.toUpperCase()} position on ${deal.pair} hit liquidation limit. Entry: ${deal.entryPrice}, Exit: ${currentPrice}. Margin Lost: -${closedVol.toFixed(2)} USD.`
           });
           return;
         }
 
-        // Multi-tier take profit exits
-        let triggerFullExit = false;
-
-        if (deal.takeProfitType === 'multiple' || deal.tp1Price) {
-          const tp1 = deal.tp1Price;
-          const tp2 = deal.tp2Price;
-          const tp3 = deal.tp3Price;
-          const userMode = state.accountMode || 'paper';
-
+        // 3. Trailing Take Profit logic (updates trailing peak & triggers on reversal deviation)
+        const isTrailingTpEnabled = deal.trailingTakeProfit !== undefined ? deal.trailingTakeProfit : !!relatedBot?.trailingTakeProfit;
+        if (isTrailingTpEnabled && deal.trailingTpActivated) {
           if (deal.type === 'long') {
-            if (tp1 && currentPrice >= tp1 && !deal.tp1Hit) {
-              deal.tp1Hit = true;
-              const ratio = (deal.takeProfitType === 'multiple') ? 0.5 : 0.5; // close 50%
-              const chunkVol = deal.volume * ratio;
-              const chunkPnl = chunkVol * diffRatio * deal.leverage;
+            if (currentPrice > (deal.trailingTpPeakPrice || 0)) {
+              deal.trailingTpPeakPrice = currentPrice;
+            }
+            const activeDeviation = deviationPercent;
+            const thresholdPrice = (deal.trailingTpPeakPrice || currentPrice) * (1 - activeDeviation / 100);
+            if (currentPrice <= thresholdPrice) {
+              // Trigger final trailing TP closure!
+              deal.status = 'take_profit';
+              deal.exitPrice = currentPrice;
+              const ratioAtExit = (currentPrice - deal.entryPrice) / deal.entryPrice;
+              const finalPnl = deal.volume * ratioAtExit * deal.leverage;
+
               if (userMode === 'real') {
-                state.realBalance = parseFloat(((state.realBalance || 50000) + chunkVol + chunkPnl).toFixed(2));
+                state.realBalance = parseFloat(((state.realBalance || 50000) + deal.volume + finalPnl).toFixed(2));
               } else {
-                state.balance = parseFloat((state.balance + chunkVol + chunkPnl).toFixed(2));
+                state.balance = parseFloat((state.balance + deal.volume + finalPnl).toFixed(2));
               }
+
               state.logs.unshift({
-                id: 'log-tp1-' + Math.random().toString(36).substring(2, 9),
+                id: 'log-tp-' + Math.random().toString(36).substring(2, 9),
                 botId: deal.botId,
                 botName: deal.botName,
                 timestamp: new Date().toISOString(),
                 pair: deal.pair,
-                action: 'tp1_trigger',
-                payload: JSON.stringify({ currentPrice, target: tp1 }),
+                action: 'exit_long',
+                payload: JSON.stringify({ event: "trailing_take_profit", entry: deal.entryPrice, exitCurrent: currentPrice, trailPeak: deal.trailingTpPeakPrice, deviation: activeDeviation, pnl: finalPnl }),
                 status: 'success',
-                message: `🟢 [${userMode.toUpperCase()} MODE] TP1 TIER REACHED: High-speed closure of 50% volume on ${deal.pair} at $${currentPrice.toLocaleString()}. Profit: +$${chunkPnl.toFixed(2)} USD.${getNotificationLogsString(state)}`
+                message: `🚀 [3COMMAS TRAILING TP] LONG EXITED: Captured reversal at ${currentPrice.toLocaleString()} (Peak reached: ${deal.trailingTpPeakPrice?.toLocaleString()}). Trailed Take Profit secured PnL of +${finalPnl.toFixed(2)} USD (Deviation: ${activeDeviation}%).`
               });
-            }
-            if (tp2 && currentPrice >= tp2 && !deal.tp2Hit) {
-              deal.tp2Hit = true;
-              const ratio = (deal.takeProfitType === 'multiple') ? 0.3 : 0.3; // close 30%
-              const chunkVol = deal.volume * ratio;
-              const chunkPnl = chunkVol * diffRatio * deal.leverage;
-              if (userMode === 'real') {
-                state.realBalance = parseFloat(((state.realBalance || 50000) + chunkVol + chunkPnl).toFixed(2));
-              } else {
-                state.balance = parseFloat((state.balance + chunkVol + chunkPnl).toFixed(2));
-              }
-              state.logs.unshift({
-                id: 'log-tp2-' + Math.random().toString(36).substring(2, 9),
-                botId: deal.botId,
-                botName: deal.botName,
-                timestamp: new Date().toISOString(),
-                pair: deal.pair,
-                action: 'tp2_trigger',
-                payload: JSON.stringify({ currentPrice, target: tp2 }),
-                status: 'success',
-                message: `🟢 [${userMode.toUpperCase()} MODE] TP2 TIER REACHED: Executed exit of 30% volume on ${deal.pair} at $${currentPrice.toLocaleString()}. Profit: +$${chunkPnl.toFixed(2)} USD.${getNotificationLogsString(state)}`
-              });
-            }
-            if (tp3 && currentPrice >= tp3 && !deal.tp3Hit) {
-              deal.tp3Hit = true;
-              triggerFullExit = true; 
+              return;
             }
           } else {
-            // Short Position multi-tp exits
-            const invDiffRatio = (deal.entryPrice - currentPrice) / deal.entryPrice;
-            if (tp1 && currentPrice <= tp1 && !deal.tp1Hit) {
-              deal.tp1Hit = true;
-              const chunkVol = deal.volume * 0.5;
-              const chunkPnl = chunkVol * invDiffRatio * deal.leverage;
+            // Short position trailing
+            if (currentPrice < (deal.trailingTpPeakPrice || 99999999)) {
+              deal.trailingTpPeakPrice = currentPrice;
+            }
+            const activeDeviation = deviationPercent;
+            const thresholdPrice = (deal.trailingTpPeakPrice || currentPrice) * (1 + activeDeviation / 100);
+            if (currentPrice >= thresholdPrice) {
+              // Trigger final trailing TP closure!
+              deal.status = 'take_profit';
+              deal.exitPrice = currentPrice;
+              const ratioAtExit = -(currentPrice - deal.entryPrice) / deal.entryPrice;
+              const finalPnl = deal.volume * ratioAtExit * deal.leverage;
+
               if (userMode === 'real') {
-                state.realBalance = parseFloat(((state.realBalance || 50000) + chunkVol + chunkPnl).toFixed(2));
+                state.realBalance = parseFloat(((state.realBalance || 50000) + deal.volume + finalPnl).toFixed(2));
               } else {
-                state.balance = parseFloat((state.balance + chunkVol + chunkPnl).toFixed(2));
+                state.balance = parseFloat((state.balance + deal.volume + finalPnl).toFixed(2));
               }
+
               state.logs.unshift({
-                id: 'log-tp1-' + Math.random().toString(36).substring(2, 9),
+                id: 'log-tp-' + Math.random().toString(36).substring(2, 9),
                 botId: deal.botId,
                 botName: deal.botName,
                 timestamp: new Date().toISOString(),
                 pair: deal.pair,
-                action: 'tp1_trigger',
-                payload: JSON.stringify({ currentPrice, target: tp1 }),
+                action: 'exit_short',
+                payload: JSON.stringify({ event: "trailing_take_profit", entry: deal.entryPrice, exitCurrent: currentPrice, trailPeak: deal.trailingTpPeakPrice, deviation: activeDeviation, pnl: finalPnl }),
                 status: 'success',
-                message: `🟢 [${userMode.toUpperCase()} MODE] TP1 TIER REACHED: Closed 50% volume of SHORT on ${deal.pair} at $${currentPrice.toLocaleString()}. Profit: +$${chunkPnl.toFixed(2)} USD.${getNotificationLogsString(state)}`
+                message: `🚀 [3COMMAS TRAILING TP] SHORT EXITED: Captured reversal at ${currentPrice.toLocaleString()} (Peak reached: ${deal.trailingTpPeakPrice?.toLocaleString()}). Trailed Take Profit secured PnL of +${finalPnl.toFixed(2)} USD (Deviation: ${activeDeviation}%).`
               });
-            }
-            if (tp2 && currentPrice <= tp2 && !deal.tp2Hit) {
-              deal.tp2Hit = true;
-              const chunkVol = deal.volume * 0.3;
-              const chunkPnl = chunkVol * invDiffRatio * deal.leverage;
-              if (userMode === 'real') {
-                state.realBalance = parseFloat(((state.realBalance || 50000) + chunkVol + chunkPnl).toFixed(2));
-              } else {
-                state.balance = parseFloat((state.balance + chunkVol + chunkPnl).toFixed(2));
-              }
-              state.logs.unshift({
-                id: 'log-tp2-' + Math.random().toString(36).substring(2, 9),
-                botId: deal.botId,
-                botName: deal.botName,
-                timestamp: new Date().toISOString(),
-                pair: deal.pair,
-                action: 'tp2_trigger',
-                payload: JSON.stringify({ currentPrice, target: tp2 }),
-                status: 'success',
-                message: `🟢 [${userMode.toUpperCase()} MODE] TP2 TIER REACHED: Closed 30% volume of SHORT on ${deal.pair} at $${currentPrice.toLocaleString()}. Profit: +$${chunkPnl.toFixed(2)} USD.${getNotificationLogsString(state)}`
-              });
-            }
-            if (tp3 && currentPrice <= tp3 && !deal.tp3Hit) {
-              deal.tp3Hit = true;
-              triggerFullExit = true;
+              return;
             }
           }
-        } else if (deal.takeProfitPrice) {
-          if (deal.type === 'long' && currentPrice >= deal.takeProfitPrice) triggerFullExit = true;
-          if (deal.type === 'short' && currentPrice <= deal.takeProfitPrice) triggerFullExit = true;
+          return; // Skip standard checks while trailing is actively running
         }
 
-        // Stop Loss trigger
+        // 4. Standard and Multi-TP Take Profit and Stop Loss evaluation
+        let triggerFullTP = false;
         let triggerSL = false;
-        if (deal.stopLossPrice) {
-          if (deal.type === 'long' && currentPrice <= deal.stopLossPrice) triggerSL = true;
-          if (deal.type === 'short' && currentPrice >= deal.stopLossPrice) triggerSL = true;
+
+        if (deal.takeProfitType === 'multiple') {
+          // Multi-TP logic
+          const tp1Size = relatedBot?.tp1Size || 50;
+          const tp2Size = relatedBot?.tp2Size || 30;
+          const tp3Size = relatedBot?.tp3Size || 20;
+
+          const tp1Price = deal.tp1Price || 0;
+          const tp2Price = deal.tp2Price || 0;
+          const tp3Price = deal.tp3Price || 0;
+
+          if (deal.type === 'long') {
+            // Long Multi-TP progression
+            if (tp1Price > 0 && currentPrice >= tp1Price && !deal.tp1Hit) {
+              if (isTrailingTpEnabled) {
+                deal.trailingTpActivated = true;
+                deal.trailingTpPeakPrice = currentPrice;
+                state.logs.unshift({
+                  id: 'log-tp-trail-act-' + Math.random().toString(36).substring(2, 9),
+                  botId: deal.botId,
+                  botName: deal.botName,
+                  timestamp: new Date().toISOString(),
+                  pair: deal.pair,
+                  action: 'adjust_take_profit',
+                  payload: JSON.stringify({ type: "multiple", tier: 1, target: tp1Price, peak: currentPrice }),
+                  status: 'success',
+                  message: `🔥 [3COMMAS TRAILING ACTIVE] LONG MULTI-TP1 ACTIVATED: Price hit target level ${tp1Price.toLocaleString()}. Commencing trailing upward follow-through with ${deviationPercent}% deviation.`
+                });
+              } else {
+                deal.tp1Hit = true;
+                deal.takeProfitPrice = tp2Price;
+                const portionRatio = tp1Size / 100;
+                const portionVolume = deal.volume * portionRatio;
+                const portionRatioProfit = (tp1Price - deal.entryPrice) / deal.entryPrice;
+                const portionPnl = portionVolume * portionRatioProfit * deal.leverage;
+
+                deal.volume = parseFloat((deal.volume - portionVolume).toFixed(4));
+                deal.amountAsset = parseFloat((deal.volume * deal.leverage / deal.entryPrice).toFixed(6));
+
+                if (userMode === 'real') {
+                  state.realBalance = parseFloat(((state.realBalance || 50000) + portionVolume + portionPnl).toFixed(2));
+                } else {
+                  state.balance = parseFloat((state.balance + portionVolume + portionPnl).toFixed(2));
+                }
+
+                state.logs.unshift({
+                  id: 'log-tp-partial-' + Math.random().toString(36).substring(2, 9),
+                  botId: deal.botId,
+                  botName: deal.botName,
+                  timestamp: new Date().toISOString(),
+                  pair: deal.pair,
+                  action: 'exit_long',
+                  payload: JSON.stringify({ tier: 1, hitPrice: tp1Price, closedSize: portionVolume, profit: portionPnl, entry: deal.entryPrice }),
+                  status: 'success',
+                  message: `🟢 [3COMMAS MULTI-TP] LONG TARGET TP1 HIT: Partially closed ${tp1Size}% of position size (${portionVolume.toFixed(2)} USDT) at ${tp1Price.toLocaleString()}. Secured partial cash profit of +${portionPnl.toFixed(2)} USD.`
+                });
+              }
+            } else if (tp2Price > 0 && currentPrice >= tp2Price && deal.tp1Hit && !deal.tp2Hit) {
+              if (isTrailingTpEnabled) {
+                deal.trailingTpActivated = true;
+                deal.trailingTpPeakPrice = currentPrice;
+                state.logs.unshift({
+                  id: 'log-tp-trail-act-' + Math.random().toString(36).substring(2, 9),
+                  botId: deal.botId,
+                  botName: deal.botName,
+                  timestamp: new Date().toISOString(),
+                  pair: deal.pair,
+                  action: 'adjust_take_profit',
+                  payload: JSON.stringify({ type: "multiple", tier: 2, target: tp2Price, peak: currentPrice }),
+                  status: 'success',
+                  message: `🔥 [3COMMAS TRAILING ACTIVE] LONG MULTI-TP2 ACTIVATED: Price hit target level ${tp2Price.toLocaleString()}. Commencing trailing upward follow-through with ${deviationPercent}% deviation.`
+                });
+              } else {
+                deal.tp2Hit = true;
+                deal.takeProfitPrice = tp3Price;
+                const portionVolume = deal.volume * (tp2Size / (tp2Size + tp3Size));
+                const portionRatioProfit = (tp2Price - deal.entryPrice) / deal.entryPrice;
+                const portionPnl = portionVolume * portionRatioProfit * deal.leverage;
+
+                deal.volume = parseFloat((deal.volume - portionVolume).toFixed(4));
+                deal.amountAsset = parseFloat((deal.volume * deal.leverage / deal.entryPrice).toFixed(6));
+
+                if (userMode === 'real') {
+                  state.realBalance = parseFloat(((state.realBalance || 50000) + portionVolume + portionPnl).toFixed(2));
+                } else {
+                  state.balance = parseFloat((state.balance + portionVolume + portionPnl).toFixed(2));
+                }
+
+                state.logs.unshift({
+                  id: 'log-tp-partial-' + Math.random().toString(36).substring(2, 9),
+                  botId: deal.botId,
+                  botName: deal.botName,
+                  timestamp: new Date().toISOString(),
+                  pair: deal.pair,
+                  action: 'exit_long',
+                  payload: JSON.stringify({ tier: 2, hitPrice: tp2Price, closedSize: portionVolume, profit: portionPnl, entry: deal.entryPrice }),
+                  status: 'success',
+                  message: `🟢 [3COMMAS MULTI-TP] LONG TARGET TP2 HIT: Partially closed ${tp2Size}% of position size (${portionVolume.toFixed(2)} USDT) at ${tp2Price.toLocaleString()}. Secured partial cash profit of +${portionPnl.toFixed(2)} USD.`
+                });
+              }
+            } else if (tp3Price > 0 && currentPrice >= tp3Price && deal.tp2Hit && !deal.tp3Hit) {
+              if (isTrailingTpEnabled) {
+                deal.trailingTpActivated = true;
+                deal.trailingTpPeakPrice = currentPrice;
+                state.logs.unshift({
+                  id: 'log-tp-trail-act-' + Math.random().toString(36).substring(2, 9),
+                  botId: deal.botId,
+                  botName: deal.botName,
+                  timestamp: new Date().toISOString(),
+                  pair: deal.pair,
+                  action: 'adjust_take_profit',
+                  payload: JSON.stringify({ type: "multiple", tier: 3, target: tp3Price, peak: currentPrice }),
+                  status: 'success',
+                  message: `🔥 [3COMMAS TRAILING ACTIVE] LONG MULTI-TP3 ACTIVATED: Price hit target level ${tp3Price.toLocaleString()}. Commencing trailing upward follow-through with ${deviationPercent}% deviation.`
+                });
+              } else {
+                triggerFullTP = true;
+              }
+            }
+          } else {
+            // Short Multi-TP progression
+            if (tp1Price > 0 && currentPrice <= tp1Price && !deal.tp1Hit) {
+              if (isTrailingTpEnabled) {
+                deal.trailingTpActivated = true;
+                deal.trailingTpPeakPrice = currentPrice;
+                state.logs.unshift({
+                  id: 'log-tp-trail-act-' + Math.random().toString(36).substring(2, 9),
+                  botId: deal.botId,
+                  botName: deal.botName,
+                  timestamp: new Date().toISOString(),
+                  pair: deal.pair,
+                  action: 'adjust_take_profit',
+                  payload: JSON.stringify({ type: "multiple", tier: 1, target: tp1Price, peak: currentPrice }),
+                  status: 'success',
+                  message: `🔥 [3COMMAS TRAILING ACTIVE] SHORT MULTI-TP1 ACTIVATED: Price hit target level ${tp1Price.toLocaleString()}. Commencing trailing downward follow-through with ${deviationPercent}% deviation.`
+                });
+              } else {
+                deal.tp1Hit = true;
+                deal.takeProfitPrice = tp2Price;
+                const portionRatio = tp1Size / 100;
+                const portionVolume = deal.volume * portionRatio;
+                const portionRatioProfit = -(tp1Price - deal.entryPrice) / deal.entryPrice;
+                const portionPnl = portionVolume * portionRatioProfit * deal.leverage;
+
+                deal.volume = parseFloat((deal.volume - portionVolume).toFixed(4));
+                deal.amountAsset = parseFloat((deal.volume * deal.leverage / deal.entryPrice).toFixed(6));
+
+                if (userMode === 'real') {
+                  state.realBalance = parseFloat(((state.realBalance || 50000) + portionVolume + portionPnl).toFixed(2));
+                } else {
+                  state.balance = parseFloat((state.balance + portionVolume + portionPnl).toFixed(2));
+                }
+
+                state.logs.unshift({
+                  id: 'log-tp-partial-' + Math.random().toString(36).substring(2, 9),
+                  botId: deal.botId,
+                  botName: deal.botName,
+                  timestamp: new Date().toISOString(),
+                  pair: deal.pair,
+                  action: 'exit_short',
+                  payload: JSON.stringify({ tier: 1, hitPrice: tp1Price, closedSize: portionVolume, profit: portionPnl, entry: deal.entryPrice }),
+                  status: 'success',
+                  message: `🟢 [3COMMAS MULTI-TP] SHORT TARGET TP1 HIT: Partially closed ${tp1Size}% of position size (${portionVolume.toFixed(2)} USDT) at ${tp1Price.toLocaleString()}. Secured partial cash profit of +${portionPnl.toFixed(2)} USD.`
+                });
+              }
+            } else if (tp2Price > 0 && currentPrice <= tp2Price && deal.tp1Hit && !deal.tp2Hit) {
+              if (isTrailingTpEnabled) {
+                deal.trailingTpActivated = true;
+                deal.trailingTpPeakPrice = currentPrice;
+                state.logs.unshift({
+                  id: 'log-tp-trail-act-' + Math.random().toString(36).substring(2, 9),
+                  botId: deal.botId,
+                  botName: deal.botName,
+                  timestamp: new Date().toISOString(),
+                  pair: deal.pair,
+                  action: 'adjust_take_profit',
+                  payload: JSON.stringify({ type: "multiple", tier: 2, target: tp2Price, peak: currentPrice }),
+                  status: 'success',
+                  message: `🔥 [3COMMAS TRAILING ACTIVE] SHORT MULTI-TP2 ACTIVATED: Price hit target level ${tp2Price.toLocaleString()}. Commencing trailing downward follow-through with ${deviationPercent}% deviation.`
+                });
+              } else {
+                deal.tp2Hit = true;
+                deal.takeProfitPrice = tp3Price;
+                const portionVolume = deal.volume * (tp2Size / (tp2Size + tp3Size));
+                const portionRatioProfit = -(tp2Price - deal.entryPrice) / deal.entryPrice;
+                const portionPnl = portionVolume * portionRatioProfit * deal.leverage;
+
+                deal.volume = parseFloat((deal.volume - portionVolume).toFixed(4));
+                deal.amountAsset = parseFloat((deal.volume * deal.leverage / deal.entryPrice).toFixed(6));
+
+                if (userMode === 'real') {
+                  state.realBalance = parseFloat(((state.realBalance || 50000) + portionVolume + portionPnl).toFixed(2));
+                } else {
+                  state.balance = parseFloat((state.balance + portionVolume + portionPnl).toFixed(2));
+                }
+
+                state.logs.unshift({
+                  id: 'log-tp-partial-' + Math.random().toString(36).substring(2, 9),
+                  botId: deal.botId,
+                  botName: deal.botName,
+                  timestamp: new Date().toISOString(),
+                  pair: deal.pair,
+                  action: 'exit_short',
+                  payload: JSON.stringify({ tier: 2, hitPrice: tp2Price, closedSize: portionVolume, profit: portionPnl, entry: deal.entryPrice }),
+                  status: 'success',
+                  message: `🟢 [3COMMAS MULTI-TP] SHORT TARGET TP2 HIT: Partially closed ${tp2Size}% of position size (${portionVolume.toFixed(2)} USDT) at ${tp2Price.toLocaleString()}. Secured partial cash profit of +${portionPnl.toFixed(2)} USD.`
+                });
+              }
+            } else if (tp3Price > 0 && currentPrice <= tp3Price && deal.tp2Hit && !deal.tp3Hit) {
+              if (isTrailingTpEnabled) {
+                deal.trailingTpActivated = true;
+                deal.trailingTpPeakPrice = currentPrice;
+                state.logs.unshift({
+                  id: 'log-tp-trail-act-' + Math.random().toString(36).substring(2, 9),
+                  botId: deal.botId,
+                  botName: deal.botName,
+                  timestamp: new Date().toISOString(),
+                  pair: deal.pair,
+                  action: 'adjust_take_profit',
+                  payload: JSON.stringify({ type: "multiple", tier: 3, target: tp3Price, peak: currentPrice }),
+                  status: 'success',
+                  message: `🔥 [3COMMAS TRAILING ACTIVE] SHORT MULTI-TP3 ACTIVATED: Price hit target level ${tp3Price.toLocaleString()}. Commencing trailing downward follow-through with ${deviationPercent}% deviation.`
+                });
+              } else {
+                triggerFullTP = true;
+              }
+            }
+          }
+        } else {
+          // Standard Single TP check
+          if (deal.takeProfitPrice) {
+            const hasHit = (deal.type === 'long' && currentPrice >= deal.takeProfitPrice) ||
+                           (deal.type === 'short' && currentPrice <= deal.takeProfitPrice);
+            if (hasHit) {
+              if (isTrailingTpEnabled) {
+                deal.trailingTpActivated = true;
+                deal.trailingTpPeakPrice = currentPrice;
+                state.logs.unshift({
+                  id: 'log-tp-trail-act-' + Math.random().toString(36).substring(2, 9),
+                  botId: deal.botId,
+                  botName: deal.botName,
+                  timestamp: new Date().toISOString(),
+                  pair: deal.pair,
+                  action: 'adjust_take_profit',
+                  payload: JSON.stringify({ type: "single", target: deal.takeProfitPrice, peak: currentPrice }),
+                  status: 'success',
+                  message: `🔥 [3COMMAS TRAILING ACTIVE] TAKE PROFIT TRAIL TRIGGERED: Price reached target level ${deal.takeProfitPrice.toLocaleString()}. Initiating trailing follow-through with ${deviationPercent}% deviation.`
+                });
+              } else {
+                triggerFullTP = true;
+              }
+            }
+          }
         }
 
-        const userMode = state.accountMode || 'paper';
+        // Standard Stop Loss check
+        if (deal.stopLossPrice) {
+          const isStopLossBreached = (deal.type === 'long' && currentPrice <= deal.stopLossPrice) ||
+                                     (deal.type === 'short' && currentPrice >= deal.stopLossPrice);
+          
+          if (isStopLossBreached) {
+            const isSlTimeoutActive = deal.slTimeoutEnabled !== undefined ? deal.slTimeoutEnabled : !!relatedBot?.slTimeoutEnabled;
+            if (isSlTimeoutActive) {
+              const timeoutSec = deal.slTimeoutSeconds !== undefined 
+                ? deal.slTimeoutSeconds 
+                : (relatedBot?.slTimeoutSeconds !== undefined ? relatedBot.slTimeoutSeconds : 0);
+              
+              if (timeoutSec > 0) {
+                if (!deal.slBreachedAt) {
+                  deal.slBreachedAt = new Date().toISOString();
+                  state.logs.unshift({
+                    id: 'log-sl-breach-' + Math.random().toString(36).substring(2, 9),
+                    botId: deal.botId,
+                    botName: deal.botName,
+                    timestamp: new Date().toISOString(),
+                    pair: deal.pair,
+                    action: 'adjust_stop_loss',
+                    payload: JSON.stringify({ price: currentPrice, limit: deal.stopLossPrice }),
+                    status: 'error',
+                    message: `⚠️ [Stop Loss Breach Alert] ${deal.pair} price breached Stop Loss limit ($${deal.stopLossPrice.toLocaleString()}). Delay active: waiting ${timeoutSec} seconds before execution.`
+                  });
+                  userUpdated = true;
+                } else {
+                  const elapsedSeconds = (new Date().getTime() - new Date(deal.slBreachedAt).getTime()) / 1000;
+                  if (elapsedSeconds >= timeoutSec) {
+                    triggerSL = true;
+                  }
+                }
+              } else {
+                triggerSL = true;
+              }
+            } else {
+              triggerSL = true;
+            }
+          } else {
+            if (deal.slBreachedAt) {
+              deal.slBreachedAt = undefined;
+              state.logs.unshift({
+                id: 'log-sl-recovered-' + Math.random().toString(36).substring(2, 9),
+                botId: deal.botId,
+                botName: deal.botName,
+                timestamp: new Date().toISOString(),
+                pair: deal.pair,
+                action: 'adjust_stop_loss',
+                payload: JSON.stringify({ price: currentPrice, limit: deal.stopLossPrice }),
+                status: 'success',
+                message: `🔔 [Stop Loss Recovery] ${deal.pair} price recovered above Stop Loss threshold ($${deal.stopLossPrice.toLocaleString()})! Timeout cleared safely.`
+              });
+              userUpdated = true;
+            }
+          }
+        }
 
-        // Perform deal closures
-        if (triggerFullExit) {
+        // Execute complete exits
+        if (triggerFullTP) {
           deal.status = 'take_profit';
           deal.exitPrice = currentPrice;
-
-          let multiplier = 1.0;
-          if (deal.tp1Hit) multiplier -= 0.5;
-          if (deal.tp2Hit) multiplier -= 0.3;
-
-          const closedVol = deal.volume * multiplier;
-          const multiplierPnl = deal.type === 'long' ? diffRatio : -diffRatio;
-          const closedPnl = closedVol * multiplierPnl * deal.leverage;
+          const closedPnl = deal.volume * (deal.type === 'long' ? diffRatio : -diffRatio) * deal.leverage;
 
           if (userMode === 'real') {
-            state.realBalance = parseFloat(((state.realBalance || 50000) + closedVol + closedPnl).toFixed(2));
+            state.realBalance = parseFloat(((state.realBalance || 50000) + deal.volume + closedPnl).toFixed(2));
           } else {
-            state.balance = parseFloat((state.balance + closedVol + closedPnl).toFixed(2));
+            state.balance = parseFloat((state.balance + deal.volume + closedPnl).toFixed(2));
           }
 
           state.logs.unshift({
@@ -487,26 +1019,19 @@ export function runSimulationTick() {
             timestamp: new Date().toISOString(),
             pair: deal.pair,
             action: deal.type === 'long' ? 'exit_long' : 'exit_short',
-            payload: '{"event": "take_profit_triggered"}',
+            payload: JSON.stringify({ event: "take_profit_triggered", entry: deal.entryPrice, exit: currentPrice, pnl: closedPnl, size: deal.volume }),
             status: 'success',
-            message: `🟢 [${userMode.toUpperCase()} MODE] TAKE PROFIT COMPLETED: Exited remaining position on ${deal.pair} at $${currentPrice.toLocaleString()}. Segment Realized ROI: +$${closedPnl.toFixed(2)} USD.${getNotificationLogsString(state)}`
+            message: `🟢 [${userMode.toUpperCase()} MODE] TAKE PROFIT COMPLETED: Exited remaining position on ${deal.pair} at ${currentPrice.toLocaleString()}. Strict 3Commas Target secured Realized ROI: +${closedPnl.toFixed(2)} USD. Pre-trade synced balance secured.`
           });
         } else if (triggerSL) {
           deal.status = 'stop_loss';
           deal.exitPrice = currentPrice;
-
-          let multiplier = 1.0;
-          if (deal.tp1Hit) multiplier -= 0.5;
-          if (deal.tp2Hit) multiplier -= 0.3;
-
-          const closedVol = deal.volume * multiplier;
-          const multiplierPnl = deal.type === 'long' ? diffRatio : -diffRatio;
-          const closedPnl = closedVol * multiplierPnl * deal.leverage;
+          const closedPnl = deal.volume * (deal.type === 'long' ? diffRatio : -diffRatio) * deal.leverage;
 
           if (userMode === 'real') {
-            state.realBalance = parseFloat(((state.realBalance || 50000) + closedVol + closedPnl).toFixed(2));
+            state.realBalance = parseFloat(((state.realBalance || 50000) + deal.volume + closedPnl).toFixed(2));
           } else {
-            state.balance = parseFloat((state.balance + closedVol + closedPnl).toFixed(2));
+            state.balance = parseFloat((state.balance + deal.volume + closedPnl).toFixed(2));
           }
 
           state.logs.unshift({
@@ -516,11 +1041,12 @@ export function runSimulationTick() {
             timestamp: new Date().toISOString(),
             pair: deal.pair,
             action: deal.type === 'long' ? 'exit_long' : 'exit_short',
-            payload: '{"event": "stop_loss"}',
+            payload: JSON.stringify({ event: "stop_loss_triggered", entry: deal.entryPrice, exit: currentPrice, pnl: closedPnl, size: deal.volume }),
             status: 'success',
-            message: `🔴 [${userMode.toUpperCase()} MODE] STOP LOSS TRIGGERED: Position on ${deal.pair} closed at $${currentPrice.toLocaleString()}. Closed Value: $${closedVol.toFixed(2)} USD, Loss: -$${Math.abs(closedPnl).toFixed(2)} USD.${getNotificationLogsString(state)}`
+            message: `🔴 [${userMode.toUpperCase()} MODE] STOP LOSS TRIGGERED: Position on ${deal.pair} closed at ${currentPrice.toLocaleString()}. Active 3Commas Stop Loss triggered (Target Level: ${deal.stopLossPercent}%). Closed value: ${deal.volume.toFixed(2)} USD, Realized Loss: -${Math.abs(closedPnl).toFixed(2)} USD.`
           });
         }
+
       });
     }
 
