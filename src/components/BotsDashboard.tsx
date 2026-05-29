@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Play, Pause, Trash2, Edit2, Code, Terminal, Plus, Shield, ShieldAlert, Award, Grid, Sliders, ChevronDown, RefreshCw, Layers, Sparkles, TrendingUp, Search, Filter, X, Check } from 'lucide-react';
 import { SignalBot, GridBot, Deal, ExchangeCredential } from '../types';
+import { WebhookBotCard } from './WebhookBotCard';
 
 interface BotsDashboardProps {
   bots: SignalBot[];
@@ -651,198 +652,18 @@ if (sellSignal)
                 const stats = getBotProfitStats(bot.id);
 
                 return (
-                  <div
+                  <WebhookBotCard
                     key={bot.id}
-                    className="bg-[#121824] rounded-2xl border border-[#20293A] overflow-hidden flex flex-col justify-between hover:border-[#2E3C54] transition shadow-xl"
-                  >
-                    {/* Card Header */}
-                    <div className="px-5 py-4 border-b border-[#20293A] flex justify-between items-start gap-3 bg-[#1A2233]/40">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span className={`inline-block w-2.5 h-2.5 rounded-full ${bot.status === 'active' ? 'bg-emerald-400 animate-pulse' : 'bg-gray-500'}`} />
-                          <h4 className="text-sm font-bold text-white tracking-tight">{bot.name}</h4>
-                        </div>
-                        <div className="flex flex-wrap gap-1.5 text-[10px] font-mono text-gray-400">
-                          <span className="bg-slate-800/80 px-2 py-0.5 rounded text-gray-300">{bot.exchange}</span>
-                          <span className="bg-slate-800/80 px-2 py-0.5 rounded text-gray-300 uppercase">{bot.strategyType}</span>
-                          {bot.strategyType === 'futures' && (
-                            <span className="bg-[#FF5A00]/10 text-[#FF5A00] px-2 py-0.5 rounded font-bold">{bot.leverage}x leverage</span>
-                          )}
-                          <span className="bg-blue-950/40 text-blue-300 px-2 py-0.5 rounded font-bold uppercase">
-                            {bot.botDirection === 'long' ? 'Long Only (Buy Option)' : bot.botDirection === 'short' ? 'Short Only (Sell Option)' : 'Long & Short (Both Options)'}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center space-x-1.5">
-                        <button
-                          onClick={() => onToggleStatus(bot.id, bot.status)}
-                          className={`p-2 rounded-xl border cursor-pointer transition ${
-                            bot.status === 'active'
-                              ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
-                              : 'bg-gray-500/10 border-gray-500/20 text-gray-400'
-                          }`}
-                          title={bot.status === 'active' ? 'Pause Bot' : 'Start Bot'}
-                        >
-                          {bot.status === 'active' ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
-                        </button>
-                        <button
-                          onClick={() => onEdit(bot)}
-                          className="p-2 rounded-xl border border-[#2D3748] bg-slate-800/10 hover:bg-slate-800/50 text-gray-400 hover:text-white cursor-pointer"
-                        >
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => onDelete(bot.id)}
-                          className="p-2 rounded-xl border border-rose-950 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 cursor-pointer"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Parameters Details */}
-                    <div className="p-5 space-y-4 flex-grow">
-                      <div className="grid grid-cols-2 gap-x-4 gap-y-3.5 text-xs">
-                        <div>
-                          <span className="text-gray-400 block font-medium">Coupled Trading Pairs</span>
-                          <div className="flex flex-wrap gap-1.5 mt-1">
-                            {bot.pairs.map((p) => {
-                              const price = coinPrices ? coinPrices[p] : undefined;
-                              return (
-                                <div key={p} className="bg-[#0F141F] border border-[#2D3748] px-2 py-1 rounded text-[10.5px] font-mono text-gray-350 flex items-center gap-1.5">
-                                  <span className="font-semibold text-slate-300">{p}</span>
-                                  {price !== undefined ? (
-                                    <>
-                                      <span className="inline-block w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
-                                      <span className="text-[#FF5A00] font-extrabold font-mono">
-                                        ${price.toLocaleString('en-US', { minimumFractionDigits: p.includes('DOGE') ? 4 : 2 })}
-                                      </span>
-                                    </>
-                                  ) : (
-                                    <span className="text-gray-500 text-[9px] font-semibold">Offline</span>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-
-                        <div>
-                          <span className="text-gray-400 block font-medium">Position Size Allocation</span>
-                          <span className="font-mono mt-1 font-bold text-white block">
-                            {bot.orderSizeType === 'usd' ? `$${bot.orderSize} USDT` : `${bot.orderSize}% Cash Balance`}
-                          </span>
-                        </div>
-
-                        <div>
-                          <span className="text-gray-400 block font-medium">Automatic Take Profit</span>
-                          <span className="text-white mt-1 font-mono font-bold block">
-                            {bot.takeProfitType === 'multiple' ? (
-                              <div className="text-emerald-400 text-xs leading-tight space-y-0.5 mt-1">
-                                <span className="block text-emerald-400 font-bold">Multi-TP Tiered:</span>
-                                {bot.tp1Value !== undefined && <span className="block text-[11px] text-emerald-500/90">• TP1: +{bot.tp1Value}% ({bot.tp1Size}%)</span>}
-                                {bot.tp2Value !== undefined && <span className="block text-[11px] text-emerald-500/90">• TP2: +{bot.tp2Value}% ({bot.tp2Size}%)</span>}
-                                {bot.tp3Value !== undefined && <span className="block text-[11px] text-emerald-500/90">• TP3: +{bot.tp3Value}% ({bot.tp3Size}%)</span>}
-                                <span className="block text-[10px] text-gray-400 font-normal mt-0.5">Trailing Deviation: {bot.trailingTpDeviation || 0.2}%</span>
-                              </div>
-                            ) : bot.takeProfitValue > 0 ? (
-                              <div className="text-emerald-400 text-xs font-mono">
-                                <div>+{bot.takeProfitValue}%</div>
-                                {bot.trailingTakeProfit && (
-                                  <div className="text-[10px] text-[#A0AEC0] font-sans font-normal mt-0.5">
-                                    Trailing Callback: {bot.trailingTpDeviation !== undefined ? bot.trailingTpDeviation : 0.2}%
-                                  </div>
-                                )}
-                              </div>
-                            ) : (
-                              <span className="text-zinc-100">None</span>
-                            )}
-                          </span>
-                        </div>
-
-                        <div>
-                          <span className="text-gray-400 block font-medium">Automatic Stop Loss</span>
-                          <span className="text-white mt-1 font-mono font-bold block">
-                            {bot.stopLossValue > 0 ? (
-                              <div className="text-rose-400 text-xs font-mono">
-                                <div>-{bot.stopLossValue}%</div>
-                                {bot.trailingStopLoss && (
-                                  <div className="text-[10px] text-[#A0AEC0] font-sans font-normal mt-0.5">
-                                    Trailing Distance: {bot.trailingSlDeviation !== undefined ? bot.trailingSlDeviation : bot.stopLossValue}%
-                                  </div>
-                                )}
-                                {bot.slMoveToBreakeven && (
-                                  <div className="text-[10px] text-[#FF5A00]/80 font-sans font-medium mt-0.5">
-                                    🛡️ Breakeven Trigger: +{bot.slBreakevenTrigger}%
-                                  </div>
-                                )}
-                                {bot.slTimeoutEnabled && (
-                                  <div className="text-[10px] text-[#C0C0C0] font-sans font-normal mt-0.5">
-                                    ⏱️ Delay Timeout: {bot.slTimeoutSeconds}s
-                                  </div>
-                                )}
-                              </div>
-                            ) : (
-                              <span className="text-zinc-500">None</span>
-                            )}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Webhook Secret Details */}
-                      <div className="bg-[#0B0F17] p-3 rounded-xl border border-[#20293A] text-xs">
-                        <span className="text-[10px] text-slate-400 font-mono block uppercase tracking-wider font-bold mb-1">Incoming Webhook Security Token</span>
-                        <div className="font-mono text-[11px] text-orange-400 bg-slate-900/50 p-1 rounded font-semibold break-all border border-slate-800">
-                          {bot.webhookToken}
-                        </div>
-                      </div>
-
-                      {/* Statistics Board */}
-                      <div className="border-[#20293A] border-t pt-4 grid grid-cols-3 gap-2 text-center text-xs">
-                        <div>
-                          <span className="text-gray-400 font-medium block">Closed P&L</span>
-                          <span className={`font-mono font-bold text-sm block mt-0.5 ${stats.totalProfit >= 0 ? 'text-emerald-400' : 'text-rose-500'}`}>
-                            {stats.totalProfit >= 0 ? '+' : ''}${stats.totalProfit.toFixed(2)}
-                          </span>
-                        </div>
-                        
-                        <div>
-                          <span className="text-gray-400 font-medium block">Active Positions</span>
-                          <span className="text-white text-sm font-bold block mt-0.5 font-mono">
-                            {activeDealsCount} / {bot.maxActiveDeals}
-                          </span>
-                        </div>
-
-                        <div>
-                          <span className="text-gray-400 font-medium block">Win Rate (Wins)</span>
-                          <span className="text-emerald-400 text-sm font-mono font-bold block mt-0.5">
-                            {stats.winRate.toFixed(1)}% <span className="text-[10px] text-gray-400 font-normal">({stats.closedCount})</span>
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Copilot Trigger Boxes */}
-                    <div className="px-5 py-3 border-t border-[#20293A] bg-[#141B26] flex gap-2">
-                      <button
-                        onClick={() => onTriggerPineScript(bot)}
-                        className="flex-1 flex items-center justify-center space-x-1.5 py-1.5 hover:bg-slate-800 border border-[#20293A] text-slate-400 hover:text-white rounded-lg text-xs font-semibold cursor-pointer"
-                      >
-                        <Code className="w-3.5 h-3.5" />
-                        <span>Copy Pine Copilot</span>
-                      </button>
-
-                      <button
-                        onClick={() => onTriggerSimulate(bot)}
-                        className="flex-1 flex items-center justify-center space-x-1.5 py-1.5 bg-[#FF5A00]/10 border border-[#FF5A00]/20 text-[#FF5A00] hover:bg-[#FF5A00]/20 rounded-lg text-xs font-bold cursor-pointer"
-                      >
-                        <Terminal className="w-3.5 h-3.5" />
-                        <span>Signal Simulator lab</span>
-                      </button>
-                    </div>
-
-                  </div>
+                    bot={bot}
+                    coinPrices={coinPrices}
+                    activeDealsCount={activeDealsCount}
+                    stats={stats}
+                    onToggleStatus={onToggleStatus}
+                    onEdit={onEdit}
+                    onDelete={onDelete}
+                    onTriggerSimulate={onTriggerSimulate}
+                    onTriggerPineScript={onTriggerPineScript}
+                  />
                 );
               })}
             </div>

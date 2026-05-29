@@ -104,6 +104,22 @@ export function PineScriptHelper({ bots, selectedBotId, onGenerate, onUpdateBot 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [copiedCode, setCopiedCode] = useState<boolean>(false);
 
+  const [useVpsPort80] = useState(() => {
+    return typeof window !== 'undefined' ? (localStorage.getItem('useVpsPort80') === 'true') : false;
+  });
+  const [vpsWebhookHost] = useState(() => {
+    return typeof window !== 'undefined' ? (localStorage.getItem('vpsWebhookHost') || '') : '';
+  });
+
+  const getCalculatedWebhookUrl = () => {
+    if (typeof window === 'undefined') return 'https://crypto-trading-bot-terminal.asia-southeast1.run.app/api/webhooks';
+    if (useVpsPort80 && vpsWebhookHost) {
+      const cleanHost = vpsWebhookHost.replace(/^(https?:\/\/)?/, '').replace(/\/$/, '');
+      return `http://${cleanHost}/api/webhooks`;
+    }
+    return `${window.location.origin}/api/webhooks`;
+  };
+
   // Synchronization with Cloud status states
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [syncSuccess, setSyncSuccess] = useState<boolean>(false);
@@ -219,7 +235,7 @@ export function PineScriptHelper({ bots, selectedBotId, onGenerate, onUpdateBot 
       indicator,
       timeframe,
       condition,
-      webhookUrl: `${window.location.host.includes('localhost') ? 'http' : 'https'}://${window.location.host}/api/webhooks`,
+      webhookUrl: getCalculatedWebhookUrl(),
       botId: activeBot.id,
       tpPercent,
       slPercent,
@@ -742,7 +758,7 @@ if (sellSignal)
                 <li>
                   Tick <span className="underline">Webhook URL</span> under notifications, and copy-paste:
                   <span className="bg-[#0B0F17] text-[#FF5A00] border border-slate-800 rounded font-mono p-1 text-[10px] select-all font-bold ml-1">
-                    {window.location.origin}/api/webhooks
+                    {getCalculatedWebhookUrl()}
                   </span>
                 </li>
               </ol>

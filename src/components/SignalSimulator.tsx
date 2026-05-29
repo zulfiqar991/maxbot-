@@ -22,7 +22,18 @@ export function SignalSimulator({ bots, logs, selectedBotId, onSendWebhook }: Si
   const [logFilter, setLogFilter] = useState<'all' | 'success' | 'error' | 'ignored'>('all');
 
   // Generate dynamic host URL
-  const webhookUrl = `${window.location.origin}/api/webhooks`;
+  const [useVpsPort80] = useState(() => {
+    return typeof window !== 'undefined' ? (localStorage.getItem('useVpsPort80') === 'true') : false;
+  });
+  const [vpsWebhookHost] = useState(() => {
+    return typeof window !== 'undefined' ? (localStorage.getItem('vpsWebhookHost') || '') : '';
+  });
+
+  const webhookUrl = typeof window !== 'undefined'
+    ? (useVpsPort80 && vpsWebhookHost
+        ? `http://${vpsWebhookHost.replace(/^(https?:\/\/)?/, '').replace(/\/$/, '')}/api/webhooks`
+        : `${window.location.origin}/api/webhooks`)
+    : '/api/webhooks';
 
   // Sync active bot with list or preset parameter bot
   useEffect(() => {

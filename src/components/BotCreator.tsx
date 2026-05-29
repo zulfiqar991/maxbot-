@@ -14,8 +14,8 @@ interface BotCreatorProps {
 
 export function BotCreator({ onSave, onSaveGrid, isSaving, onCancel, botToEdit, gridBotToEdit, state }: BotCreatorProps) {
   // Determine active form tab
-  const [activeTab, setActiveTab] = useState<'signal' | 'grid'>(
-    gridBotToEdit ? 'grid' : botToEdit ? 'signal' : 'signal'
+  const [activeTab, setActiveTab] = useState<'master' | 'signal' | 'grid'>(
+    gridBotToEdit ? 'grid' : botToEdit ? 'master' : 'master'
   );
 
   const [pairFilterValue, setPairFilterValue] = useState('');
@@ -203,7 +203,7 @@ export function BotCreator({ onSave, onSaveGrid, isSaving, onCancel, botToEdit, 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (activeTab === 'signal') {
+    if (activeTab === 'signal' || activeTab === 'master') {
       if (!signalName.trim()) {
         setMessage('Signal Bot Name is required.');
         return;
@@ -298,21 +298,37 @@ export function BotCreator({ onSave, onSaveGrid, isSaving, onCancel, botToEdit, 
     <div className="space-y-6 text-white max-w-4xl mx-auto" id="creator_section">
       
       {/* Bot type selector tabs */}
-      <div className="flex bg-[#0F141F] p-1.5 rounded-2xl border border-[#20293A]">
+      <div className="flex flex-col sm:flex-row bg-[#0F141F] p-1.5 rounded-2xl border border-[#20293A] gap-1 sm:gap-0">
         <button
           type="button"
           onClick={() => {
-            if (!botToEdit && !gridBotToEdit) setActiveTab('signal');
+            setActiveTab('master');
           }}
-          disabled={!!botToEdit || !!gridBotToEdit}
+          disabled={!!gridBotToEdit}
+          className={`flex-1 py-3 text-sm font-bold rounded-xl transition flex items-center justify-center space-x-2 cursor-pointer ${
+            activeTab === 'master'
+              ? 'bg-[#FF5A00] text-white shadow-lg'
+              : 'text-gray-400 hover:text-white disabled:opacity-50'
+          }`}
+        >
+          <Zap className="w-4 h-4 text-amber-400" />
+          <span>🏆 Quick Bot Master</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab('signal');
+          }}
+          disabled={!!gridBotToEdit}
           className={`flex-1 py-3 text-sm font-bold rounded-xl transition flex items-center justify-center space-x-2 cursor-pointer ${
             activeTab === 'signal'
               ? 'bg-[#FF5A00] text-white shadow-lg'
               : 'text-gray-400 hover:text-white disabled:opacity-50'
           }`}
         >
-          <Sliders className="w-4 h-4" />
-          <span>1. Signal Webhook Bot</span>
+          <Sliders className="w-4 h-4 text-[#FF5A00]" />
+          <span>⚙️ Advanced Webhook Bot</span>
         </button>
 
         <button
@@ -327,8 +343,8 @@ export function BotCreator({ onSave, onSaveGrid, isSaving, onCancel, botToEdit, 
               : 'text-gray-400 hover:text-white disabled:opacity-50'
           }`}
         >
-          <Layers className="w-4 h-4" />
-          <span>2. High-Frequency Grid Bot</span>
+          <Layers className="w-4 h-4 text-cyan-400" />
+          <span>⚡ High-Frequency Grid Bot</span>
         </button>
       </div>
 
@@ -337,14 +353,16 @@ export function BotCreator({ onSave, onSaveGrid, isSaving, onCancel, botToEdit, 
           
           <div className="bg-[#1E293B]/40 px-6 py-4 border-b border-[#20293A] flex justify-between items-center bg-gradient-to-r from-[#121824] to-[#1E293B]/60">
             <h2 className="text-lg font-bold tracking-tight">
-              {activeTab === 'signal' ? (
+              {activeTab === 'master' ? (
+                <>🏆 {botToEdit ? `Edit Master Bot: ${botToEdit.name}` : 'Create New Easy Master Bot'}</>
+              ) : activeTab === 'signal' ? (
                 <>🔧 {botToEdit ? `Edit Signal Bot: ${botToEdit.name}` : '🚀 Create Webhook Signal Bot'}</>
               ) : (
                 <>🤖 {gridBotToEdit ? `Edit Grid Bot: ${gridBotToEdit.name}` : '⚡ Create High-Frequency Grid Bot'}</>
               )}
             </h2>
             <span className="bg-slate-800 text-gray-400 font-mono text-[10px] px-2.5 py-1 rounded-md border border-slate-700 font-semibold tracking-wider">
-              {activeTab === 'signal' ? 'Webhook Alert Execution' : 'Auto Arbitrage Engine'}
+              {activeTab === 'master' ? 'Simplified Config Mode' : activeTab === 'signal' ? 'Webhook Alert Execution' : 'Auto Arbitrage Engine'}
             </span>
           </div>
 
@@ -619,7 +637,7 @@ export function BotCreator({ onSave, onSaveGrid, isSaving, onCancel, botToEdit, 
                 {/* active status banner */}
                 <div className="text-[11px] text-gray-400 flex items-center gap-1.5 bg-[#131A2A] px-3 py-2 rounded-lg">
                   <Info className="w-3.5 h-3.5 text-slate-400" />
-                  {activeTab === 'signal' ? (
+                  {activeTab === 'signal' || activeTab === 'master' ? (
                     <span>Authorized pairs list: <strong className="font-mono text-white">{selectedPairs.join(', ')}</strong></span>
                   ) : (
                     <span>Grid base arbitrage target ticker: <strong className="font-mono text-[#FF5A00]">{gridPair}</strong></span>
@@ -631,7 +649,363 @@ export function BotCreator({ onSave, onSaveGrid, isSaving, onCancel, botToEdit, 
             <div className="border-b border-[#20293A] my-6" />
 
             {/* DYNAMIC FORM SEGMENTS */}
-            {activeTab === 'signal' ? (
+            {activeTab === 'master' ? (
+              
+              /* ============= QUICK BOT MASTER FORM FIELDS ============= */
+              <div className="space-y-6">
+                
+                {/* 1. BOT IDENTIFIER & DIRECTION OPTION */}
+                <div className="bg-[#101520]/60 p-6 rounded-2xl border border-[#232F45] space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-xs font-bold font-mono text-gray-400 uppercase tracking-wider mb-2">Bot Master Title (Name)</label>
+                      <input
+                        type="text"
+                        value={signalName}
+                        onChange={(e) => setSignalName(e.target.value)}
+                        placeholder="Enter Bot Name (e.g. My Buy Scalper)"
+                        className="w-full bg-[#0F141F] border border-slate-800 focus:border-[#FF5A00] rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none transition-colors text-sm font-semibold font-mono"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-xs font-bold font-mono text-gray-400 uppercase tracking-wider mb-2">Buy or Sell Option</label>
+                      <div className="grid grid-cols-2 gap-3 h-[46px]">
+                        <button
+                          type="button"
+                          onClick={() => setBotDirection('long')}
+                          className={`rounded-xl border flex items-center justify-center gap-2 cursor-pointer transition-all ${
+                            botDirection === 'long'
+                              ? 'bg-emerald-500/10 border-emerald-500 text-emerald-400 font-bold shadow-lg shadow-emerald-500/10'
+                              : 'bg-[#0B0F17]/40 border-slate-800 text-gray-450 hover:text-white hover:border-slate-700'
+                          }`}
+                        >
+                          <span className="text-sm">📥</span>
+                          <span className="text-xs font-bold uppercase tracking-wider">Buy (Long)</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setBotDirection('short')}
+                          className={`rounded-xl border flex items-center justify-center gap-2 cursor-pointer transition-all ${
+                            botDirection === 'short'
+                              ? 'bg-rose-500/10 border-rose-500 text-rose-400 font-bold shadow-lg shadow-rose-500/10'
+                              : 'bg-[#0B0F17]/40 border-slate-800 text-gray-450 hover:text-white hover:border-slate-700'
+                          }`}
+                        >
+                          <span className="text-sm">📤</span>
+                          <span className="text-xs font-bold uppercase tracking-wider">Sell (Short)</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. COIN TICKER TARGET SELECTION */}
+                <div className="bg-[#101520]/60 p-6 rounded-2xl border border-[#232F45] space-y-4">
+                  <label className="block text-xs font-bold font-mono text-gray-400 uppercase tracking-wider">Target Coin Pair</label>
+                  <div className="flex flex-wrap gap-2">
+                    {['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'ZEC/USDT', 'DOGE/USDT'].map((p) => {
+                      const isSelected = selectedPairs.includes(p);
+                      return (
+                        <button
+                          type="button"
+                          key={'easy-pair-' + p}
+                          onClick={() => {
+                            if (isSelected) {
+                              if (selectedPairs.length > 1) setSelectedPairs(selectedPairs.filter(x => x !== p));
+                            } else {
+                              setSelectedPairs([...selectedPairs, p]);
+                            }
+                          }}
+                          className={`px-4 py-2 text-xs font-mono font-bold rounded-xl border transition-all cursor-pointer flex items-center space-x-1.5 ${
+                            isSelected
+                              ? 'bg-[#FF5A00]/20 border-[#FF5A00] text-white font-bold'
+                              : 'bg-[#0E131E] border-slate-850 text-gray-400 hover:text-white'
+                          }`}
+                        >
+                          {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-[#FF5A00]" />}
+                          <span>{p}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 3. CORE CONFIGURATION (TP, SL, TRAIL TP, SIZE, LEVERAGE) */}
+                <div className="bg-[#101520]/60 p-6 rounded-2xl border border-[#232F45] space-y-5">
+                  <div className={`grid grid-cols-1 sm:grid-cols-2 ${strategyType === 'futures' ? 'md:grid-cols-5' : 'md:grid-cols-4'} gap-6`}>
+                    {/* Order Size */}
+                    <div>
+                      <div className="flex justify-between items-center mb-2">
+                        <label className="block text-xs font-bold font-mono text-gray-400 uppercase tracking-wider">Order Size</label>
+                        <div className="flex items-center space-x-1 bg-[#090D14] p-0.5 rounded-lg border border-slate-850">
+                          <button
+                            type="button"
+                            onClick={() => setOrderSizeType('usd')}
+                            className={`px-2 py-0.5 text-[9px] font-bold rounded-md font-mono transition-all uppercase cursor-pointer ${
+                              orderSizeType === 'usd' ? 'bg-[#FF5A00] text-white shadow-md' : 'text-gray-500 hover:text-white'
+                            }`}
+                          >
+                            USDT
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setOrderSizeType('percent')}
+                            className={`px-2 py-0.5 text-[9px] font-bold rounded-md font-mono transition-all uppercase cursor-pointer ${
+                              orderSizeType === 'percent' ? 'bg-[#FF5A00] text-white shadow-md' : 'text-gray-500 hover:text-white'
+                            }`}
+                          >
+                            % Bal
+                          </button>
+                        </div>
+                      </div>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          min={orderSizeType === 'usd' ? "5" : "1"}
+                          max={orderSizeType === 'percent' ? "100" : undefined}
+                          value={baseOrderSize}
+                          onChange={(e) => setBaseOrderSize(Math.max(orderSizeType === 'usd' ? 5 : 1, parseFloat(e.target.value) || (orderSizeType === 'usd' ? 10 : 5)))}
+                          className="w-full bg-[#0F141F] border border-slate-800 focus:border-[#FF5A00] rounded-xl pl-3 pr-8 py-2.5 text-xs text-white focus:outline-none font-mono font-bold"
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-gray-500 font-mono font-bold">
+                          {orderSizeType === 'usd' ? 'USDT' : '%'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Take Profit Target */}
+                    <div>
+                      <label className="block text-xs font-bold font-mono text-[#FF5A00] uppercase tracking-wider mb-2">Take Profit (TP %)</label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          step="0.1"
+                          min="0.1"
+                          value={takeProfitValue}
+                          onChange={(e) => {
+                            setTakeProfitValue(Math.max(0.1, parseFloat(e.target.value) || 1.0));
+                            setTakeProfitType('percent');
+                          }}
+                          className="w-full bg-[#0F141F] border border-slate-800 focus:border-[#FF5A00] rounded-xl pl-3 pr-8 py-2.5 text-xs text-white focus:outline-none font-mono font-bold"
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-gray-500 font-mono font-bold">%</span>
+                      </div>
+                    </div>
+
+                    {/* Stop Loss Target */}
+                    <div>
+                      <label className="block text-xs font-bold font-mono text-gray-400 uppercase tracking-wider mb-2">Stop Loss (SL %)</label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          step="0.1"
+                          min="0.1"
+                          value={stopLossValue}
+                          onChange={(e) => {
+                            setStopLossValue(Math.max(0.1, parseFloat(e.target.value) || 1.5));
+                            setStopLossType('percent');
+                          }}
+                          className="w-full bg-[#0F141F] border border-slate-800 focus:border-[#FF5A00] rounded-xl pl-3 pr-8 py-2.5 text-xs text-white focus:outline-none font-mono font-bold"
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-gray-500 font-mono font-bold">%</span>
+                      </div>
+                    </div>
+
+                    {/* Trailing Take Profit Deviation */}
+                    <div>
+                      <div className="flex justify-between items-center mb-2">
+                        <label className="block text-xs font-bold font-mono text-[#FF5A00] uppercase tracking-wider">Trailing Profit (%)</label>
+                        <button
+                          type="button"
+                          onClick={() => setTrailingTakeProfit(!trailingTakeProfit)}
+                          className={`text-[9.5px] font-bold px-2 py-0.5 rounded font-mono uppercase ${
+                            trailingTakeProfit ? 'bg-amber-500/20 text-amber-500 border border-amber-500/30' : 'bg-slate-800 text-gray-500'
+                          }`}
+                        >
+                          {trailingTakeProfit ? 'Trailing On' : 'Trailing Off'}
+                        </button>
+                      </div>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          step="0.05"
+                          min="0.01"
+                          disabled={!trailingTakeProfit}
+                          value={trailingTpDeviation}
+                          onChange={(e) => setTrailingTpDeviation(Math.max(0.01, parseFloat(e.target.value) || 0.1))}
+                          className={`w-full border rounded-xl pl-3 pr-8 py-2.5 text-xs focus:outline-none font-mono font-bold transition-all ${
+                            trailingTakeProfit 
+                              ? 'bg-[#0F141F] border-slate-800 focus:border-[#FF5A00] text-white' 
+                              : 'bg-[#0B0F17]/30 border-slate-900/50 text-gray-650 cursor-not-allowed'
+                          }`}
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-gray-500 font-mono font-bold">%</span>
+                      </div>
+                      {trailingTakeProfit && (
+                        <div className="flex gap-1 mt-1.5 flex-wrap text-[9px] font-mono">
+                          {[0.05, 0.1, 0.2, 0.5, 1.0].map((dev) => (
+                            <button
+                              type="button"
+                              key={`quick-tp-dev-${dev}`}
+                              onClick={() => setTrailingTpDeviation(dev)}
+                              className={`px-1 rounded-md py-0.5 cursor-pointer transition-all ${
+                                trailingTpDeviation === dev 
+                                  ? 'bg-amber-500/20 text-amber-500 font-bold border border-amber-500/30' 
+                                  : 'bg-slate-900 text-gray-400 hover:text-white border border-slate-800'
+                              }`}
+                            >
+                              {dev}%
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Multiplier Leverage (Futures Only) */}
+                    {strategyType === 'futures' && (
+                      <div>
+                        <div className="flex justify-between items-center mb-2">
+                          <label className="block text-xs font-bold font-mono text-gray-400 uppercase tracking-wider">Leverage</label>
+                          <span className="text-[10px] bg-[#FF5A00]/10 text-[#FF5A00] font-mono font-black px-1.5 py-0.5 rounded">
+                            {leverage}x
+                          </span>
+                        </div>
+                        <div className="space-y-2">
+                          <input
+                            type="range"
+                            min="1"
+                            max="125"
+                            value={leverage}
+                            onChange={(e) => setLeverage(parseInt(e.target.value) || 10)}
+                            className="w-full accent-[#FF5A00] cursor-pointer h-1 bg-[#232F45] rounded-lg appearance-none mt-2"
+                          />
+                          <div className="flex justify-between gap-1 text-[9px] font-mono text-gray-500">
+                            {[5, 10, 20, 50, 100].map((lev) => (
+                              <button
+                                type="button"
+                                key={`quick-lev-${lev}`}
+                                onClick={() => setLeverage(lev)}
+                                className={`px-1.5 py-0.5 rounded cursor-pointer transition ${
+                                  leverage === lev ? 'bg-[#FF5A00]/25 text-[#FF5A00] font-bold' : 'bg-slate-800 hover:text-white'
+                                }`}
+                              >
+                                {lev}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                {/* Smart Preset & Risk/Reward Intelligence Panel */}
+                <div className="mt-4 pt-4 border-t border-slate-800/60 space-y-4 text-left">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#0B0F17]/60 p-4 rounded-xl border border-slate-850">
+                    <div className="space-y-1 text-left">
+                      <span className="text-[10px] uppercase font-bold text-[#FF5A00] font-mono tracking-wider block">⚡ Quick Setup Presets</span>
+                      <span className="text-[11px] text-gray-400 block font-medium">Deploy industry-standard risk configurations instantly.</span>
+                    </div>
+                    
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTakeProfitValue(0.2);
+                          setTakeProfitType('percent');
+                          setStopLossValue(0.4);
+                          setStopLossType('percent');
+                          setTrailingTakeProfit(false);
+                        }}
+                        className="px-3.5 py-1.5 bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/25 text-sky-400 text-xs font-bold rounded-lg transition-all cursor-pointer font-mono"
+                      >
+                        ⚡ Scalper (0.2% / 0.4%)
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTakeProfitValue(1.5);
+                          setTakeProfitType('percent');
+                          setStopLossValue(1.0);
+                          setStopLossType('percent');
+                          setTrailingTakeProfit(true);
+                          setTrailingTpDeviation(0.1);
+                        }}
+                        className="px-3.5 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/25 text-emerald-400 text-xs font-bold rounded-lg transition-all cursor-pointer font-mono"
+                      >
+                        📈 Standard (1.5% / 1.0% Trail)
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTakeProfitValue(3.0);
+                          setTakeProfitType('percent');
+                          setStopLossValue(1.5);
+                          setStopLossType('percent');
+                          setTrailingTakeProfit(true);
+                          setTrailingTpDeviation(0.25);
+                        }}
+                        className="px-3.5 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/25 text-amber-500 text-xs font-bold rounded-lg transition-all cursor-pointer font-mono"
+                      >
+                        🛡️ Swing (3.0% / 1.5% Trail)
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Dynamic Risk To Reward Gauge */}
+                  {(() => {
+                    const tpVal = takeProfitType === 'none' ? 0 : takeProfitValue;
+                    const slVal = stopLossType === 'none' ? 0 : stopLossValue;
+                    
+                    if (slVal === 0) {
+                      return (
+                        <div className="bg-amber-500/5 border border-amber-500/15 text-yellow-405 text-amber-400 text-xs px-3.5 py-2.5 rounded-xl flex items-center gap-2 font-mono">
+                          <span>⚠️ Capital Alert: Stop-Loss is currently disabled. A sudden drop may lead to custom drawdown or margin liquidation.</span>
+                        </div>
+                      );
+                    }
+
+                    const ratio = tpVal / slVal;
+                    let alertColor = 'text-gray-400';
+                    let alertBg = 'bg-slate-900/40 border-slate-800';
+                    let statusText = '';
+
+                    if (ratio >= 2.0) {
+                      alertColor = 'text-emerald-400';
+                      alertBg = 'bg-emerald-500/5 border-emerald-500/10';
+                      statusText = '🟢 Professional Risk Expectancy: Greater than 1:2.0 ratio. Your take profit makes more than twice what you risk per trade.';
+                    } else if (ratio >= 1.0) {
+                      alertColor = 'text-yellow-400';
+                      alertBg = 'bg-yellow-500/5 border-yellow-500/10';
+                      statusText = '🟡 Balanced Scalp Expectancy: Between 1:1.0 and 1:1.9 ratio. Safe and reliable for high-winrate indicators.';
+                    } else {
+                      alertColor = 'text-rose-400';
+                      alertBg = 'bg-rose-500/5 border-rose-500/10';
+                      statusText = '🔴 Warning - Negative Expectancy Ratio: Stop-Loss is wider than Take Profit. You risk more than you make per transaction. Verify win rates!';
+                    }
+
+                    return (
+                      <div className={`${alertBg} border text-xs p-3.5 rounded-xl flex flex-col sm:flex-row justify-between sm:items-center gap-3 font-sans`}>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm">🧬</span>
+                          <span className="text-gray-300 font-semibold leading-tight">{statusText}</span>
+                        </div>
+                        <div className="bg-[#040609] border border-slate-850 p-2 rounded-lg font-mono text-center shrink-0 min-w-[120px]">
+                          <span className="text-[9px] text-gray-500 block font-bold uppercase tracking-wider">RISK TO REWARD</span>
+                          <span className={`text-sm font-black ${alertColor}`}>1 : {ratio.toFixed(2)}</span>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+
+              </div>
+
+              </div>
+            ) : activeTab === 'signal' ? (
               
               /* ============= SIGNAL BOT FORM FIELDS ============= */
               <div className="space-y-6">
@@ -807,6 +1181,22 @@ export function BotCreator({ onSave, onSaveGrid, isSaving, onCancel, botToEdit, 
                                   />
                                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-gray-500 font-mono font-bold">% deviation</span>
                                 </div>
+                                <div className="flex gap-1.5 flex-wrap font-mono mt-1">
+                                  {[0.05, 0.1, 0.2, 0.5, 1.0].map((dev) => (
+                                    <button
+                                      type="button"
+                                      key={`adv-tp-dev-1-${dev}`}
+                                      onClick={() => setTrailingTpDeviation(dev)}
+                                      className={`text-[9px] px-1.5 py-0.5 rounded cursor-pointer transition-all ${
+                                        trailingTpDeviation === dev 
+                                          ? 'bg-amber-500/20 text-amber-500 font-bold border border-amber-500/30' 
+                                          : 'bg-slate-900 text-gray-400 hover:text-white border border-slate-800'
+                                      }`}
+                                    >
+                                      {dev}%
+                                    </button>
+                                  ))}
+                                </div>
                                 <span className="text-[9.5px] text-gray-550 block leading-tight">Secures profits once price pulls back by this % from local peaks.</span>
                               </div>
                             )}
@@ -945,6 +1335,22 @@ export function BotCreator({ onSave, onSaveGrid, isSaving, onCancel, botToEdit, 
                                     className="w-full bg-[#070a13] border border-gray-800 rounded-lg px-3 py-1.5 text-xs font-semibold text-white focus:outline-none font-mono"
                                   />
                                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-gray-500 font-mono font-bold">% deviation</span>
+                                </div>
+                                <div className="flex gap-1.5 flex-wrap font-mono mt-1">
+                                  {[0.05, 0.1, 0.2, 0.5, 1.0].map((dev) => (
+                                    <button
+                                      type="button"
+                                      key={`adv-tp-dev-2-${dev}`}
+                                      onClick={() => setTrailingTpDeviation(dev)}
+                                      className={`text-[9px] px-1.5 py-0.5 rounded cursor-pointer transition-all ${
+                                        trailingTpDeviation === dev 
+                                          ? 'bg-amber-500/20 text-amber-500 font-bold border border-amber-500/30' 
+                                          : 'bg-slate-900 text-gray-400 hover:text-white border border-slate-800'
+                                      }`}
+                                    >
+                                      {dev}%
+                                    </button>
+                                  ))}
                                 </div>
                                 <span className="text-[9.5px] text-gray-550 block leading-tight">Trails each TP tier to secure maximal profit margins during spikes.</span>
                               </div>
@@ -1090,6 +1496,109 @@ export function BotCreator({ onSave, onSaveGrid, isSaving, onCancel, botToEdit, 
                     </div>
 
                   </div>
+
+                  {/* Smart Preset & Risk/Reward Intelligence Panel (Advanced) */}
+                  <div className="mt-4 pt-4 border-t border-slate-800/60 space-y-4 text-left">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#0B0F17]/60 p-4 rounded-xl border border-slate-850">
+                      <div className="space-y-1 text-left">
+                        <span className="text-[10px] uppercase font-bold text-[#FF5A00] font-mono tracking-wider block">⚡ Advanced Setup Presets</span>
+                        <span className="text-[11px] text-gray-400 block font-medium">Deploy industry-standard risk configurations instantly.</span>
+                      </div>
+                      
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTakeProfitValue(0.2);
+                            setTakeProfitType('percent');
+                            setStopLossValue(0.4);
+                            setStopLossType('percent');
+                            setTrailingTakeProfit(false);
+                          }}
+                          className="px-3.5 py-1.5 bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/25 text-sky-400 text-xs font-bold rounded-lg transition-all cursor-pointer font-mono"
+                        >
+                          ⚡ Scalper (0.2% / 0.4%)
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTakeProfitValue(1.5);
+                            setTakeProfitType('percent');
+                            setStopLossValue(1.0);
+                            setStopLossType('percent');
+                            setTrailingTakeProfit(true);
+                            setTrailingTpDeviation(0.1);
+                          }}
+                          className="px-3.5 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/25 text-emerald-400 text-xs font-bold rounded-lg transition-all cursor-pointer font-mono"
+                        >
+                          📈 Standard (1.5% / 1.0% Trail)
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTakeProfitValue(3.0);
+                            setTakeProfitType('percent');
+                            setStopLossValue(1.5);
+                            setStopLossType('percent');
+                            setTrailingTakeProfit(true);
+                            setTrailingTpDeviation(0.25);
+                          }}
+                          className="px-3.5 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/25 text-amber-500 text-xs font-bold rounded-lg transition-all cursor-pointer font-mono"
+                        >
+                          🛡️ Swing (3.0% / 1.5% Trail)
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Dynamic Risk To Reward Gauge */}
+                    {(() => {
+                      const tpVal = takeProfitType === 'none' ? 0 : takeProfitValue;
+                      const slVal = stopLossType === 'none' ? 0 : stopLossValue;
+                      
+                      if (slVal === 0) {
+                        return (
+                          <div className="bg-amber-500/5 border border-amber-500/15 text-amber-400 text-xs px-3.5 py-2.5 rounded-xl flex items-center gap-2 font-mono">
+                            <span>⚠️ Capital Alert: Stop-Loss is currently disabled. A sudden drop may lead to custom drawdown or margin liquidation.</span>
+                          </div>
+                        );
+                      }
+
+                      const ratio = tpVal / slVal;
+                      let alertColor = 'text-gray-400';
+                      let alertBg = 'bg-slate-900/40 border-slate-800';
+                      let statusText = '';
+
+                      if (ratio >= 2.0) {
+                        alertColor = 'text-emerald-400';
+                        alertBg = 'bg-emerald-500/5 border-emerald-500/10';
+                        statusText = '🟢 Professional Risk Expectancy: Greater than 1:2.0 ratio. Your take profit makes more than twice what you risk per trade.';
+                      } else if (ratio >= 1.0) {
+                        alertColor = 'text-yellow-400';
+                        alertBg = 'bg-yellow-500/5 border-yellow-500/10';
+                        statusText = '🟡 Balanced Scalp Expectancy: Between 1:1.0 and 1:1.9 ratio. Safe and reliable for high-winrate indicators.';
+                      } else {
+                        alertColor = 'text-rose-400';
+                        alertBg = 'bg-rose-500/5 border-rose-500/10';
+                        statusText = '🔴 Warning - Negative Expectancy Ratio: Stop-Loss is wider than Take Profit. You risk more than you make per transaction. Verify win rates!';
+                      }
+
+                      return (
+                        <div className={`${alertBg} border text-xs p-3.5 rounded-xl flex flex-col sm:flex-row justify-between sm:items-center gap-3 font-sans`}>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm">🧬</span>
+                            <span className="text-gray-300 font-semibold leading-tight">{statusText}</span>
+                          </div>
+                          <div className="bg-[#040609] border border-slate-850 p-2 rounded-lg font-mono text-center shrink-0 min-w-[120px]">
+                            <span className="text-[9px] text-gray-500 block font-bold uppercase tracking-wider">RISK TO REWARD</span>
+                            <span className={`text-sm font-black ${alertColor}`}>1 : {ratio.toFixed(2)}</span>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+
                 </div>
 
                 {/* LIMIT RULES */}
@@ -1340,7 +1849,9 @@ export function BotCreator({ onSave, onSaveGrid, isSaving, onCancel, botToEdit, 
                 <>
                   <ShieldCheck className="w-4 h-4" />
                   <span>
-                    {activeTab === 'signal' ? (
+                    {activeTab === 'master' ? (
+                      <>{botToEdit ? 'Save Master Bot Changes' : 'Launch Master Bot Strategy'}</>
+                    ) : activeTab === 'signal' ? (
                       <>{botToEdit ? 'Save Signal Bot Changes' : 'Create Signal Bot Engine'}</>
                     ) : (
                       <>{gridBotToEdit ? 'Save Grid Bot Changes' : 'Launch Arbitrage Grid Bot'}</>
