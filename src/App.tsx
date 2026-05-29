@@ -566,6 +566,7 @@ export default function App() {
               onChangeView={setView}
               exchangeCredentials={state.exchangeCredentials}
               realBalance={state.realBalance}
+              username={currentUser?.username || 'demo'}
             />
           )}
 

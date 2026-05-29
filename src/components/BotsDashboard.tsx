@@ -19,6 +19,7 @@ interface BotsDashboardProps {
   onChangeView: (view: 'dashboard' | 'create' | 'deals' | 'simulator' | 'pine') => void;
   exchangeCredentials?: ExchangeCredential[];
   realBalance?: number;
+  username?: string;
 }
 
 export function BotsDashboard({
@@ -36,7 +37,8 @@ export function BotsDashboard({
   onTriggerPineScript,
   onChangeView,
   exchangeCredentials = [],
-  realBalance = 50000
+  realBalance = 50000,
+  username
 }: BotsDashboardProps) {
   const [activeTab, setActiveTab] = useState<'signal' | 'grid' | 'smart'>('signal');
   const [expandedGridBot, setExpandedGridBot] = useState<string | null>(null);
@@ -663,6 +665,7 @@ if (sellSignal)
                     onDelete={onDelete}
                     onTriggerSimulate={onTriggerSimulate}
                     onTriggerPineScript={onTriggerPineScript}
+                    username={username}
                   />
                 );
               })}

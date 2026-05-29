@@ -18,6 +18,7 @@ interface WebhookBotCardProps {
   onDelete: (botId: string) => void;
   onTriggerSimulate: (bot: SignalBot) => void;
   onTriggerPineScript: (bot: SignalBot) => void;
+  username?: string;
 }
 
 export function WebhookBotCard({
@@ -29,7 +30,8 @@ export function WebhookBotCard({
   onEdit,
   onDelete,
   onTriggerSimulate,
-  onTriggerPineScript
+  onTriggerPineScript,
+  username
 }: WebhookBotCardProps) {
   const [activePreviewAction, setActivePreviewAction] = useState<'buy' | 'sell'>('buy');
   const [selectedPair, setSelectedPair] = useState<string>(
@@ -54,14 +56,14 @@ export function WebhookBotCard({
       const origin = window.location.origin;
       if (useVpsPort80 && vpsWebhookHost) {
         const cleanHost = vpsWebhookHost.replace(/^(https?:\/\/)?/, '').replace(/\/$/, '');
-        setWebhookUrl(`http://${cleanHost}/api/webhooks`);
+        setWebhookUrl(`http://${cleanHost}/webhook/${username || 'demo'}/${bot.id}`);
       } else {
-        setWebhookUrl(`${origin}/api/webhooks`);
+        setWebhookUrl(bot.webhookUrl || `${origin}/webhook/${username || 'demo'}/${bot.id}`);
       }
     } else {
-      setWebhookUrl('https://crypto-trading-bot-terminal.asia-southeast1.run.app/api/webhooks');
+      setWebhookUrl(bot.webhookUrl || `https://crypto-trading-bot-terminal.asia-southeast1.run.app/webhook/${username || 'demo'}/${bot.id}`);
     }
-  }, [useVpsPort80, vpsWebhookHost]);
+  }, [useVpsPort80, vpsWebhookHost, bot.webhookUrl, username, bot.id]);
 
   // Update selected pair if bot pairs swap
   useEffect(() => {

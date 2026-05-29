@@ -30,6 +30,7 @@ export interface SignalBot {
   slTimeoutSeconds?: number;
   maxActiveDeals: number;
   webhookToken: string;
+  webhookUrl?: string;
   createdAt: string;
   pineIndicator?: string;
   pineTimeframe?: string;

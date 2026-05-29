@@ -299,7 +299,7 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                   disabled={isLoading}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="e.g. tradermax@gmail.com (or 'demo')"
+                  placeholder="e.g. tradermax@gmail.com"
                   className="w-full bg-[#070a13] border border-[#20293A] rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-orange-500 font-mono transition-all"
                 />
               </div>
@@ -336,10 +336,7 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                   <ShieldCheck className="w-3.5 h-3.5" /> High-Contrast Isolation Architecture Active
                 </div>
                 <p className="leading-snug text-gray-500">
-                  • Confirms to OWASP login safety & GPDR data anonymization thresholds.
-                </p>
-                <p className="leading-snug text-gray-500">
-                  • Sign-in with default <span className="text-orange-400 font-bold">demo</span> / password <span className="text-orange-400 font-bold">demo</span> to test secure Admin controls.
+                  • Confirms to OWASP login safety & GDPR data anonymization thresholds.
                 </p>
               </div>
   
@@ -519,7 +516,7 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                     * GDPR compliant verification: Security system generates stateful tokens with a strict 10-minute expiry range.
                   </span>
                   <span className="text-[10px] text-orange-400 font-mono font-semibold block leading-normal mt-1.5 p-2 bg-[#FF5A00]/5 border border-[#FF5A00]/10 rounded-lg">
-                    💡 SANDBOX HINT: Enter your EXACT registered email address (e.g. <b>demo@example.com</b> for the demo user, or your own profile email) to generate and display the recovery token instantly in the simulator below!
+                    💡 SANDBOX HINT: Enter your EXACT registered email address or your own profile email to generate and display the recovery token instantly in the simulator below!
                   </span>
                 </div>
 

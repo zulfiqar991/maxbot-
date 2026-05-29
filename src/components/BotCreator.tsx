@@ -179,7 +179,7 @@ export function BotCreator({ onSave, onSaveGrid, isSaving, onCancel, botToEdit, 
       formatted = `${formatted}/USDT`;
     }
 
-    if (activeTab === 'signal') {
+    if (activeTab === 'signal' || activeTab === 'master') {
       if (!selectedPairs.includes(formatted)) {
         setSelectedPairs([...selectedPairs, formatted]);
       }
@@ -544,7 +544,7 @@ export function BotCreator({ onSave, onSaveGrid, isSaving, onCancel, botToEdit, 
                             return <p className="text-[10px] text-gray-500 italic py-1">No matching Spot pairs.</p>;
                           }
                           return activeSpotPairs.map((pair) => {
-                            const isSelected = activeTab === 'signal'
+                            const isSelected = (activeTab === 'signal' || activeTab === 'master')
                               ? selectedPairs.includes(pair)
                               : gridPair === pair;
                             return (
@@ -552,7 +552,7 @@ export function BotCreator({ onSave, onSaveGrid, isSaving, onCancel, botToEdit, 
                                 type="button"
                                 key={'spot-' + pair}
                                 onClick={() => {
-                                  if (activeTab === 'signal') {
+                                  if (activeTab === 'signal' || activeTab === 'master') {
                                     if (selectedPairs.includes(pair)) {
                                       setSelectedPairs(selectedPairs.filter(p => p !== pair));
                                     } else {
@@ -598,7 +598,7 @@ export function BotCreator({ onSave, onSaveGrid, isSaving, onCancel, botToEdit, 
                             return <p className="text-[10px] text-gray-500 italic py-1">No matching Futures perpetual contracts.</p>;
                           }
                           return activeFuturesPairs.map((pair) => {
-                            const isSelected = activeTab === 'signal'
+                            const isSelected = (activeTab === 'signal' || activeTab === 'master')
                               ? selectedPairs.includes(pair)
                               : gridPair === pair;
                             return (
@@ -606,7 +606,7 @@ export function BotCreator({ onSave, onSaveGrid, isSaving, onCancel, botToEdit, 
                                 type="button"
                                 key={'futures-' + pair}
                                 onClick={() => {
-                                  if (activeTab === 'signal') {
+                                  if (activeTab === 'signal' || activeTab === 'master') {
                                     if (selectedPairs.includes(pair)) {
                                       setSelectedPairs(selectedPairs.filter(p => p !== pair));
                                     } else {
@@ -701,34 +701,98 @@ export function BotCreator({ onSave, onSaveGrid, isSaving, onCancel, botToEdit, 
                   </div>
                 </div>
 
-                {/* 2. COIN TICKER TARGET SELECTION */}
+                {/* 2. TARGET COIN PAIR CUSTOMIZATION */}
                 <div className="bg-[#101520]/60 p-6 rounded-2xl border border-[#232F45] space-y-4">
-                  <label className="block text-xs font-bold font-mono text-gray-400 uppercase tracking-wider">Target Coin Pair</label>
-                  <div className="flex flex-wrap gap-2">
-                    {['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'ZEC/USDT', 'DOGE/USDT'].map((p) => {
-                      const isSelected = selectedPairs.includes(p);
-                      return (
-                        <button
-                          type="button"
-                          key={'easy-pair-' + p}
-                          onClick={() => {
-                            if (isSelected) {
-                              if (selectedPairs.length > 1) setSelectedPairs(selectedPairs.filter(x => x !== p));
-                            } else {
-                              setSelectedPairs([...selectedPairs, p]);
-                            }
-                          }}
-                          className={`px-4 py-2 text-xs font-mono font-bold rounded-xl border transition-all cursor-pointer flex items-center space-x-1.5 ${
-                            isSelected
-                              ? 'bg-[#FF5A00]/20 border-[#FF5A00] text-white font-bold'
-                              : 'bg-[#0E131E] border-slate-850 text-gray-400 hover:text-white'
-                          }`}
+                  <div className="flex justify-between items-center">
+                    <label className="block text-xs font-bold font-mono text-gray-400 uppercase tracking-wider">
+                      2. Target Coin Pair(s) Configuration
+                    </label>
+                    <span className="text-[10px] text-[#FF5A00] font-mono font-semibold uppercase">Customizable / User-Defined</span>
+                  </div>
+                  
+                  {/* Preset Quick Selection Buttons */}
+                  <div className="space-y-2">
+                    <span className="block text-[10px] text-gray-400 font-mono uppercase tracking-wider">Quick Presets:</span>
+                    <div className="flex flex-wrap gap-2">
+                      {['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'ZEC/USDT', 'DOGE/USDT'].map((p) => {
+                        const isSelected = selectedPairs.includes(p);
+                        return (
+                          <button
+                            type="button"
+                            key={'easy-pair-' + p}
+                            onClick={() => {
+                              if (isSelected) {
+                                if (selectedPairs.length > 1) {
+                                  setSelectedPairs(selectedPairs.filter(x => x !== p));
+                                }
+                              } else {
+                                setSelectedPairs([...selectedPairs, p]);
+                              }
+                            }}
+                            className={`px-3 py-1.5 text-xs font-mono font-bold rounded-xl border transition-all cursor-pointer flex items-center space-x-1.5 ${
+                              isSelected
+                                ? 'bg-[#FF5A00]/20 border-[#FF5A00] text-white font-bold'
+                                : 'bg-[#0E131E] border-slate-850 text-gray-450 hover:text-white'
+                            }`}
+                          >
+                            {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-[#FF5A00]" />}
+                            <span>{p}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Customizable / User-Defined Typing Input */}
+                  <div className="space-y-3 pt-2 border-t border-[#1C2533]/80">
+                    <span className="block text-[10px] text-gray-400 font-mono uppercase tracking-wider">Add User-Defined Custom Pair:</span>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={customPairText}
+                        onChange={(e) => setCustomPairText(e.target.value)}
+                        placeholder="Type any pair, e.g., XRP/USDT, LTC/USDT"
+                        className="flex-1 bg-[#0F141F] border border-slate-800 focus:border-[#FF5A00] rounded-xl px-3 py-2 text-xs uppercase placeholder-gray-500 font-mono text-white focus:outline-none focus:ring-1 focus:ring-[#FF5A00]"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleAddCustomPair();
+                          }
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddCustomPair}
+                        className="bg-[#1E293B] hover:bg-slate-700 text-white font-semibold text-xs px-4 py-2 rounded-xl border border-slate-700 flex items-center justify-center gap-1 active:scale-95 transition cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5 text-[#FF5A00]" />
+                        <span>Add Pair</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Curated Active Tags display */}
+                  <div className="pt-2">
+                    <span className="block text-[10px] text-gray-400 font-mono uppercase tracking-wider mb-2">Active Targets ({selectedPairs.length}):</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {selectedPairs.map((pair) => (
+                        <span 
+                          key={'active-tag-' + pair}
+                          className="inline-flex items-center gap-1 bg-[#1A2333] border border-slate-800 text-xs text-white font-mono font-bold px-2.5 py-1 rounded-lg"
                         >
-                          {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-[#FF5A00]" />}
-                          <span>{p}</span>
-                        </button>
-                      );
-                    })}
+                          <span>{pair}</span>
+                          {selectedPairs.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => setSelectedPairs(selectedPairs.filter(p => p !== pair))}
+                              className="text-gray-400 hover:text-orange-500 font-bold ml-1 cursor-pointer transition-colors"
+                            >
+                              &times;
+                            </button>
+                          )}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
