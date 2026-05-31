@@ -446,6 +446,7 @@ export default function App() {
         onReset={handleResetState} 
         isResetting={isResetting} 
         currentUser={currentUser}
+        onUpdateSettings={handleUpdateExchangeSettings}
       />
 
       {/* Main layout container */}
@@ -549,6 +550,8 @@ export default function App() {
               exchangeCredentials={state.exchangeCredentials}
               realBalance={state.realBalance}
               username={currentUser?.username || 'demo'}
+              accountMode={state.accountMode || 'paper'}
+              onUpdateSettings={handleUpdateExchangeSettings}
             />
           )}
 
@@ -573,6 +576,7 @@ export default function App() {
               deals={state.activeDeals}
               onCloseDeal={handleClosePosition}
               isClosing={isClosingDealId}
+              accountMode={state.accountMode || 'paper'}
             />
           )}
 

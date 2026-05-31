@@ -6,14 +6,15 @@ interface DealsTrackerProps {
   deals: Deal[];
   onCloseDeal: (dealId: string) => Promise<void>;
   isClosing: string | null;
+  accountMode: 'paper' | 'real';
 }
 
-export function DealsTracker({ deals, onCloseDeal, isClosing }: DealsTrackerProps) {
+export function DealsTracker({ deals, onCloseDeal, isClosing, accountMode }: DealsTrackerProps) {
   const [dealTab, setDealTab] = useState<'active' | 'history'>('active');
   const [calcMode, setCalcMode] = useState<'price' | 'roi'>('price');
 
-  const activeDeals = deals.filter(d => d.status === 'active');
-  const historyDeals = deals.filter(d => d.status !== 'active');
+  const activeDeals = deals.filter(d => d.status === 'active' && ((d as any).accountMode || 'paper') === accountMode);
+  const historyDeals = deals.filter(d => d.status !== 'active' && ((d as any).accountMode || 'paper') === accountMode);
 
   // Stats calculation
   const totalMarginAllocated = activeDeals.reduce((sum, d) => sum + d.volume, 0);
@@ -102,8 +103,14 @@ export function DealsTracker({ deals, onCloseDeal, isClosing }: DealsTrackerProp
     <div className="space-y-6">
       {/* Upper info section */}
       <div>
-        <h2 className="text-xl font-bold text-white tracking-tight">Paper Trading Terminal</h2>
-        <p className="text-xs text-gray-400 mt-1">Live active positions and historic webhook executed trade logs</p>
+        <h2 className="text-xl font-bold text-white tracking-tight">
+          {accountMode === 'real' ? 'Real Execution Terminal' : 'Paper Trading Terminal'}
+        </h2>
+        <p className="text-xs text-gray-400 mt-1">
+          {accountMode === 'real' 
+            ? 'Live connected exchange active positions and REST/WebSocket trade history logs' 
+            : 'Live active positions and historic webhook executed paper trade logs'}
+        </p>
       </div>
 
       {/* Tabs list & CSV export row */}

@@ -101,6 +101,28 @@ export function ExchangeManager({ state, onUpdateSettings, coinPrices = {} }: Ex
       futuresScale: 0.80,
       themeColor: 'from-teal-500/10 to-transparent border-teal-500/30 text-teal-400',
       tag: 'WEEX DIRECT'
+    },
+    { 
+      name: 'KuCoin', 
+      rest: 'https://api.kucoin.com', 
+      ws: 'wss://api-v2.kucoin.com/v1/connection', 
+      portal: 'https://kucoin.com',
+      defaultPairs: ['BTC/USDT', 'ETH/USDT', 'KCS/USDT'],
+      spotScale: 0.50,
+      futuresScale: 0.50,
+      themeColor: 'from-emerald-500/10 to-transparent border-emerald-500/20 text-emerald-400',
+      tag: 'KUCOIN PERP'
+    },
+    { 
+      name: 'MEXC', 
+      rest: 'https://api.mexc.com', 
+      ws: 'wss://wbs.mexc.com/ws', 
+      portal: 'https://mexc.com',
+      defaultPairs: ['BTC/USDT', 'ETH/USDT', 'MX/USDT'],
+      spotScale: 0.70,
+      futuresScale: 0.30,
+      themeColor: 'from-blue-500/10 to-transparent border-blue-500/20 text-blue-400',
+      tag: 'MEXC DIRECT'
     }
   ];
 

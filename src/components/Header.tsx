@@ -7,23 +7,30 @@ interface HeaderProps {
   onReset: () => void;
   isResetting: boolean;
   currentUser: { username: string } | null;
+  onUpdateSettings?: (settings: Partial<AccountState>) => Promise<void>;
 }
 
-export function Header({ state, onReset, isResetting, currentUser }: HeaderProps) {
-  // Calculate total active deals metrics
-  const activeCount = state.activeDeals.filter(d => d.status === 'active').length;
-  const totalPnl = state.activeDeals.reduce((sum, deal) => {
+export function Header({ state, onReset, isResetting, currentUser, onUpdateSettings }: HeaderProps) {
+  const accountMode = state.accountMode || 'paper';
+  // Filter active deals by selected mode (real or paper)
+  const filteredDealsByMode = (state.activeDeals || []).filter(
+    d => ((d as any).accountMode || 'paper') === accountMode
+  );
+
+  // Calculate total active deals metrics based on current mode
+  const activeCount = filteredDealsByMode.filter(d => d.status === 'active').length;
+  const totalPnl = filteredDealsByMode.reduce((sum, deal) => {
     return sum + (deal.status === 'active' ? deal.pnl : 0);
   }, 0);
 
-  // Calculate historic closed profit
-  // A historic deal is one that is closed
-  const closedDeals = state.activeDeals.filter(d => d.status !== 'active');
-  const closedPnl = state.activeDeals
+  // Calculate historic closed profit based on current mode
+  const closedDeals = filteredDealsByMode.filter(d => d.status !== 'active');
+  const closedPnl = filteredDealsByMode
     .filter(d => d.status !== 'active')
     .reduce((sum, d) => sum + d.pnl, 0);
 
-  const netAssetValue = state.balance + totalPnl;
+  const modeBalance = accountMode === 'real' ? (state.realBalance ?? 50000) : state.balance;
+  const netAssetValue = modeBalance + totalPnl;
 
   return (
     <header className="border-b border-[#1E293B] bg-[#0B0F19] sticky top-0 z-50">
@@ -37,27 +44,41 @@ export function Header({ state, onReset, isResetting, currentUser }: HeaderProps
             </div>
             <div>
               <div className="flex items-center space-x-2">
-                <h1 className="text-xl font-bold text-white tracking-tight leading-none text-orange-500">Max Bot</h1>
-                <span className="bg-[#FF5A00]/10 text-[#FF5A00] text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border border-[#FF5A00]/20">
+                <h1 className="text-xl font-bold text-white tracking-tight leading-none text-orange-500 font-sans">Max Bot</h1>
+                <span className="bg-[#FF5A00]/10 text-[#FF5A00] text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border border-[#FF5A00]/20 font-sans">
                   Quantum AI Engine
                 </span>
               </div>
-              <p className="text-xs text-gray-400 mt-1">High-Frequency Webhook & Live Grid Suite</p>
+              <p className="text-xs text-gray-400 mt-1 font-sans">High-Frequency Webhook & Live Grid Suite</p>
             </div>
           </div>
 
           {/* Stats Bar */}
           <div className="flex flex-wrap items-center gap-4 lg:gap-6 bg-[#111827] border border-[#1E293B] rounded-xl px-5 py-3 shadow-md">
             
-            <div className="flex flex-col min-w-[110px]">
+            <button
+              id="header_toggle_mode_btn"
+              onClick={() => {
+                if (onUpdateSettings) {
+                  const nextMode = accountMode === 'real' ? 'paper' : 'real';
+                  onUpdateSettings({ accountMode: nextMode });
+                }
+              }}
+              className={`flex flex-col min-w-[125px] text-left transition-all hover:brightness-110 cursor-pointer active:scale-95 rounded-lg p-1.5 border ${
+                accountMode === 'real' 
+                  ? 'bg-emerald-500/10 border-emerald-500/25' 
+                  : 'bg-orange-500/10 border-orange-500/25'
+              }`}
+              title="Click to toggle between Paper Simulation and Real Trading mode"
+            >
               <span className="text-[10px] text-gray-400 font-mono uppercase tracking-wider flex items-center gap-1">
-                <span className={`w-1.5 h-1.5 rounded-full ${state.accountMode === 'real' ? 'bg-emerald-500 animate-pulse' : 'bg-orange-500 animate-pulse'}`}></span>
-                {state.accountMode === 'real' ? 'REAL BALANCE' : 'PAPER BALANCE'}
+                <span className={`w-1.5 h-1.5 rounded-full ${accountMode === 'real' ? 'bg-emerald-500 animate-pulse' : 'bg-orange-500 animate-pulse'}`}></span>
+                {accountMode === 'real' ? 'REAL BALANCE' : 'PAPER BALANCE'}
               </span>
-              <span className="text-sm font-semibold font-mono text-white mt-0.5">
-                ${(state.accountMode === 'real' ? (state.realBalance ?? 50000) : state.balance).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              <span className={`text-sm font-bold font-mono mt-0.5 ${accountMode === 'real' ? 'text-emerald-400' : 'text-orange-400'}`}>
+                ${modeBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
-            </div>
+            </button>
 
             <div className="hidden sm:block border-l border-[#1E293B] h-8" />
 

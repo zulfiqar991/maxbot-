@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Play, Pause, Trash2, Edit2, Code, Terminal, Plus, Shield, ShieldAlert, Award, Grid, Sliders, ChevronDown, RefreshCw, Layers, Sparkles, TrendingUp, Search, Filter, X, Check } from 'lucide-react';
-import { SignalBot, GridBot, Deal, ExchangeCredential } from '../types';
+import { SignalBot, GridBot, Deal, ExchangeCredential, AccountState } from '../types';
 import { WebhookBotCard } from './WebhookBotCard';
 
 interface BotsDashboardProps {
@@ -20,6 +20,8 @@ interface BotsDashboardProps {
   exchangeCredentials?: ExchangeCredential[];
   realBalance?: number;
   username?: string;
+  accountMode?: 'paper' | 'real';
+  onUpdateSettings?: (settings: Partial<AccountState>) => Promise<void>;
 }
 
 export function BotsDashboard({
@@ -38,10 +40,17 @@ export function BotsDashboard({
   onChangeView,
   exchangeCredentials = [],
   realBalance = 50000,
-  username
+  username,
+  accountMode = 'paper',
+  onUpdateSettings
 }: BotsDashboardProps) {
   const [activeTab, setActiveTab] = useState<'signal' | 'grid' | 'smart'>('signal');
   const [expandedGridBot, setExpandedGridBot] = useState<string | null>(null);
+
+  // Filter deals based on current accountMode filter
+  const filteredDealsByMode = activeDeals.filter(
+    d => ((d as any).accountMode || 'paper') === accountMode
+  );
 
   // === SMART BOT CO-PILOT HUB STATES ===
   const [backtestStrategy, setBacktestStrategy] = useState('strat-macd-ema');
@@ -190,11 +199,11 @@ if (sellSignal)
   });
 
   const getBotDealsCount = (botId: string) => {
-    return activeDeals.filter(d => d.botId === botId && d.status === 'active').length;
+    return filteredDealsByMode.filter(d => d.botId === botId && d.status === 'active').length;
   };
 
   const getBotProfitStats = (botId: string) => {
-    const botDeals = activeDeals.filter(d => d.botId === botId);
+    const botDeals = filteredDealsByMode.filter(d => d.botId === botId);
     const activeProfit = botDeals.filter(d => d.status === 'active').reduce((sum, d) => sum + d.pnl, 0);
     const realizedProfit = botDeals.filter(d => d.status !== 'active').reduce((sum, d) => sum + d.pnl, 0);
     const wins = botDeals.filter(d => d.status !== 'active' && d.pnl > 0).length;
@@ -211,6 +220,52 @@ if (sellSignal)
 
   return (
     <div className="space-y-6">
+
+      {/* Dynamic Account Mode Toggle Banner */}
+      <div className="bg-[#111827] border border-[#1E293B] rounded-2xl p-5 shadow-lg relative overflow-hidden">
+        <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-gradient-to-l from-[#FF5A00]/5 to-transparent pointer-events-none" />
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="space-y-1 md:max-w-xl">
+            <div className="flex items-center gap-2">
+              <span className={`inline-flex items-center gap-1 text-[10px] uppercase font-mono px-2 py-0.5 rounded font-extrabold ${accountMode === 'real' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 animate-pulse' : 'bg-orange-500/10 text-orange-500 border border-orange-500/20'}`}>
+                {accountMode === 'real' ? 'Real Execution Mode Active' : 'Paper Trading / Sandbox Mode Active'}
+              </span>
+              <span className="text-[10px] text-gray-400 font-mono">Max Bot Core Gateway</span>
+            </div>
+            <h3 className="text-base font-bold text-white tracking-tight">Select Trading Execution Pipeline</h3>
+            <p className="text-xs text-gray-400 leading-relaxed">
+              Toggle between risk-free virtual balance paper trading (simulated sandbox execution) or connect live exchange REST/WebSocket APIs with secure sub-API key pipelines.
+            </p>
+          </div>
+
+          <div className="bg-slate-950 border border-slate-800 rounded-xl p-1 flex gap-1.5 self-start md:self-center shrink-0">
+            <button
+              id="dashboard_paper_mode_btn"
+              onClick={() => onUpdateSettings?.({ accountMode: 'paper' })}
+              className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                accountMode === 'paper'
+                  ? 'bg-[#FF5A00] text-black shadow-lg font-extrabold'
+                  : 'text-gray-400 hover:text-white hover:bg-slate-900'
+              }`}
+            >
+              <Pause className="w-3.5 h-3.5 fill-current" />
+              <span>Paper Trading Mode</span>
+            </button>
+            <button
+              id="dashboard_real_mode_btn"
+              onClick={() => onUpdateSettings?.({ accountMode: 'real' })}
+              className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                accountMode === 'real'
+                  ? 'bg-emerald-500 text-black shadow-lg font-extrabold'
+                  : 'text-gray-400 hover:text-white hover:bg-slate-900'
+              }`}
+            >
+              <Play className="w-3.5 h-3.5 fill-current animate-pulse" />
+              <span>Real Trading Mode</span>
+            </button>
+          </div>
+        </div>
+      </div>
       
       {/* Real exchange connect balance panel */}
       {exchangeCredentials.length > 0 && (
@@ -223,7 +278,11 @@ if (sellSignal)
               <div>
                 <h4 className="text-sm font-bold text-white tracking-tight flex items-center gap-2">
                   <span>Exchange Multi-Channel Terminal</span>
-                  <span className="bg-emerald-500/10 text-emerald-400 text-[10px] uppercase font-mono px-2 py-0.5 rounded-full border border-emerald-500/20 font-bold">Active Connection Gateway</span>
+                  {accountMode === 'real' ? (
+                    <span className="bg-emerald-500/10 text-emerald-400 text-[10px] uppercase font-mono px-2 py-0.5 rounded-full border border-emerald-500/20 font-bold animate-pulse">Running Live Stream ✓</span>
+                  ) : (
+                    <span className="bg-slate-500/10 text-slate-400 text-[10px] uppercase font-mono px-2 py-0.5 rounded-full border border-slate-500/20 font-bold">Sandbox Standby</span>
+                  )}
                 </h4>
                 <p className="text-xs text-slate-300 mt-1">Showing real account balances secured by registered sub-API channels. Withdrawals disabled across all connected keys.</p>
               </div>
@@ -391,7 +450,7 @@ if (sellSignal)
             <div className="flex items-baseline gap-1.5">
               <span className="text-2xl font-black font-mono text-white">
                 {(() => {
-                  const closed = activeDeals.filter(d => d.status !== 'active');
+                  const closed = filteredDealsByMode.filter(d => d.status !== 'active');
                   if (closed.length === 0) return "100%";
                   const wins = closed.filter(d => d.pnl > 0).length;
                   return `${((wins / closed.length) * 100).toFixed(1)}%`;
@@ -400,7 +459,7 @@ if (sellSignal)
               <span className="text-[10px] text-gray-500 font-mono font-semibold">Success</span>
             </div>
             <span className="text-[11px] text-gray-400 block font-mono mt-0.5">
-              {activeDeals.filter(d => d.status === 'active').length} positions currently active
+              {filteredDealsByMode.filter(d => d.status === 'active').length} positions currently active
             </span>
           </div>
           <div className="bg-orange-500/10 text-amber-500 p-3 rounded-xl border border-orange-500/20">
