@@ -1,5 +1,5 @@
 import React from 'react';
-import { Bot, RefreshCw, Layers, ShieldAlert, Award, User, LogOut } from 'lucide-react';
+import { Bot, RefreshCw, Layers, ShieldAlert, Award, User } from 'lucide-react';
 import { AccountState } from '../types';
 
 interface HeaderProps {
@@ -7,10 +7,9 @@ interface HeaderProps {
   onReset: () => void;
   isResetting: boolean;
   currentUser: { username: string } | null;
-  onLogout: () => void;
 }
 
-export function Header({ state, onReset, isResetting, currentUser, onLogout }: HeaderProps) {
+export function Header({ state, onReset, isResetting, currentUser }: HeaderProps) {
   // Calculate total active deals metrics
   const activeCount = state.activeDeals.filter(d => d.status === 'active').length;
   const totalPnl = state.activeDeals.reduce((sum, deal) => {
@@ -121,19 +120,6 @@ export function Header({ state, onReset, isResetting, currentUser, onLogout }: H
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isResetting ? 'animate-spin' : ''}`} />
               <span>Reset</span>
-            </button>
-
-            <div className="border-l border-[#1E293B] h-8" />
-
-            {/* Log Out */}
-            <button
-              id="header_logout_btn"
-              onClick={onLogout}
-              className="flex items-center space-x-1 px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition rounded-lg text-xs font-semibold cursor-pointer border border-rose-500/20 active:scale-95"
-              title="Logout from Max Bot Suite"
-            >
-              <LogOut className="w-3.5 h-3.5 text-rose-500" />
-              <span>Log Out</span>
             </button>
           </div>
 

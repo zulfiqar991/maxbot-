@@ -25,20 +25,17 @@ import { SignalSimulator } from './components/SignalSimulator';
 import { PineScriptHelper } from './components/PineScriptHelper';
 import { ExchangeManager } from './components/ExchangeManager';
 import { WebhookLogs } from './components/WebhookLogs';
-import { LoginScreen } from './components/LoginScreen';
 import { SecurityAdminPanel } from './components/SecurityAdminPanel';
 
 export default function App() {
   const [view, setView] = useState<'dashboard' | 'create' | 'deals' | 'simulator' | 'pine' | 'exchanges' | 'weblogs' | 'security'>('dashboard');
   
-  // Set up current user auth session
-  const [currentUser, setCurrentUser] = useState<{ username: string; email?: string; phone?: string; isAdmin?: boolean } | null>(() => {
-    try {
-      const savedUser = localStorage.getItem('maxbot_currentUser');
-      return savedUser ? JSON.parse(savedUser) : null;
-    } catch {
-      return null;
-    }
+  // Set up current user auth session - Direct, unrestricted access enabled
+  const [currentUser, setCurrentUser] = useState<{ username: string; email?: string; phone?: string; isAdmin?: boolean } | null>({
+    username: 'demo',
+    email: 'demo@example.com',
+    phone: '',
+    isAdmin: true
   });
 
   const [state, setState] = useState<AccountState>({
@@ -440,20 +437,6 @@ export default function App() {
     return parsed;
   };
 
-  if (!currentUser) {
-    return (
-      <LoginScreen 
-        onLoginSuccess={(user, userState) => {
-          localStorage.setItem('maxbot_currentUser', JSON.stringify(user));
-          setCurrentUser(user);
-          if (userState) {
-            setState(userState);
-          }
-        }} 
-      />
-    );
-  }
-
   return (
     <div className="min-h-screen bg-[#070a13] font-sans text-gray-200 antialiased selection:bg-[#FF5A00]/20 selection:text-[#FF5A00]">
       
@@ -463,7 +446,6 @@ export default function App() {
         onReset={handleResetState} 
         isResetting={isResetting} 
         currentUser={currentUser}
-        onLogout={handleLogout}
       />
 
       {/* Main layout container */}

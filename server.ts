@@ -52,69 +52,7 @@ app.post('/api/register', (req, res) => {
 
 // SIGN-IN SECURE PASS GATEWAY (OWASP & GDPR compliant)
 app.post('/api/login', (req, res) => {
-  const { email, password } = req.body;
-  if (!email || !password) {
-    return res.status(400).json({ error: 'Email and password fields are required.' });
-  }
-
-  const rawInput = email.trim();
-  const searchInput = rawInput.toLowerCase();
-
-  if (password.trim() !== 'hira1122') {
-    const db = loadDB();
-    // Log failed login audit
-    db.auditLogs.unshift({
-      id: 'aud-' + Math.random().toString(36).substring(2, 9),
-      timestamp: new Date().toISOString(),
-      action: 'LOGIN_FAILED',
-      email: rawInput,
-      status: 'failed',
-      ipAddress: req.ip || '127.0.0.1',
-      details: `Failed sign-in attempt with invalid password credentials for identity: ${rawInput}`
-    });
-    saveDB(db);
-    return res.status(401).json({ error: 'Access denied.' });
-  }
-
-  const db = loadDB();
-  
-  // If this user key doesn't exist, create/initialize it automatically to unlock the app seamlessly
-  if (!db.users[searchInput]) {
-    db.users[searchInput] = {
-      username: rawInput,
-      email: rawInput.includes('@') ? rawInput : `${rawInput}@example.com`,
-      phone: '',
-      password: 'hira1122',
-      state: createDefaultState(rawInput),
-      isAdmin: searchInput === 'demo' || searchInput === 'admin'
-    };
-  }
-
-  const userNode = db.users[searchInput];
-
-  // Log successful login audit
-  db.auditLogs.unshift({
-    id: 'aud-' + Math.random().toString(36).substring(2, 9),
-    timestamp: new Date().toISOString(),
-    action: 'LOGIN_SUCCESS',
-    email: userNode.email,
-    username: userNode.username,
-    status: 'success',
-    ipAddress: req.ip || '127.0.0.1',
-    details: `User ${userNode.username} successfully signed-in. Password gate passed.`
-  });
-  saveDB(db);
-
-  res.json({
-    success: true,
-    user: { 
-      username: userNode.username, 
-      email: userNode.email || '', 
-      phone: userNode.phone || '',
-      isAdmin: !!userNode.isAdmin
-    },
-    state: userNode.state
-  });
+  return res.status(403).json({ error: 'Login is disabled.' });
 });
 
 // SECURE PASSWORD RESET REQUEST GATEWAY
