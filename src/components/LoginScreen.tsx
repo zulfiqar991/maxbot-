@@ -362,12 +362,12 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
           {mode === 'register' && (
             <form onSubmit={handleSubmit} className="space-y-4">
               
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-4">
                 
-                {/* Username */}
+                {/* User ID (Username) */}
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider font-mono flex items-center gap-1.5">
-                    <User className="w-3.5 h-3.5 text-orange-400" /> Username Log Key
+                    <User className="w-3.5 h-3.5 text-orange-400" /> User ID
                   </label>
                   <input
                     type="text"
@@ -383,7 +383,7 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                 {/* Email Address */}
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider font-mono flex items-center gap-1.5">
-                    <Mail className="w-3.5 h-3.5 text-orange-400" /> Email Access Link
+                    <Mail className="w-3.5 h-3.5 text-orange-400" /> Email
                   </label>
                   <input
                     type="email"
@@ -396,30 +396,10 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                   />
                 </div>
 
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                
-                {/* SMS Phone Coordinates (Optional) */}
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider font-mono flex items-center gap-1.5">
-                    <Phone className="w-3.5 h-3.5 text-orange-300" /> SMS Contact Phone
-                  </label>
-                  <input
-                    type="text"
-                    disabled={isLoading}
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="e.g. +14155550299"
-                    className="w-full bg-[#070a13] border border-[#20293A] rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-orange-500 font-mono transition-all"
-                  />
-                  <span className="text-[9px] text-gray-500 block">Enables secure SMS numeric pin recovery.</span>
-                </div>
-
                 {/* Password Input */}
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider font-mono flex items-center gap-1.5">
-                    <Key className="w-3.5 h-3.5 text-orange-400" /> Password Threshold
+                    <Key className="w-3.5 h-3.5 text-orange-400" /> Password
                   </label>
                   <input
                     type="password"

@@ -49,7 +49,7 @@ setInterval(runSimulationTick, 4000);
 app.post('/api/register', (req, res) => {
   const { username, email, password, phone } = req.body;
   if (!username || !email || !password) {
-    return res.status(400).json({ error: 'Username, Email, and Password parameters are all required.' });
+    return res.status(400).json({ error: 'User ID, Email, and Password parameters are all required.' });
   }
 
   const db = loadDB();
@@ -58,7 +58,7 @@ app.post('/api/register', (req, res) => {
 
   // Check if username is already registered
   if (db.users[normalizedKey]) {
-    return res.status(400).json({ error: 'Username is already registered. Please login or select another name.' });
+    return res.status(400).json({ error: 'User ID is already registered. Please login or select another User ID.' });
   }
 
   // Check if email is already registered across all users
