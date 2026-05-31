@@ -190,16 +190,12 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
       }
     } else {
       if (!username.trim() || !email.trim() || !password.trim()) {
-        setErrorMsg('Username, Email and Password fields are all mandatory.');
+        setErrorMsg('User ID, Email and Password fields are all mandatory.');
         return;
       }
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(email.trim())) {
         setErrorMsg('Specify a valid email address.');
-        return;
-      }
-      if (username.trim().length < 3) {
-        setErrorMsg('Username must be at least 3 characters.');
         return;
       }
     }
@@ -209,7 +205,7 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
 
     try {
       const payload = mode === 'register'
-        ? { username: username.trim(), email: email.trim().toLowerCase(), phone: phone.trim(), password: password.trim() }
+        ? { username: username.trim(), email: email.trim().toLowerCase(), phone: '', password: password.trim() }
         : { email: email.trim(), password: password.trim() }; // login uses email + password strictly
 
       const res = await fetch(endpoint, {
