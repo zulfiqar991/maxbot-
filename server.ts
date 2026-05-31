@@ -47,56 +47,7 @@ setInterval(runSimulationTick, 4000);
 
 // REGISTER DAEMON USER
 app.post('/api/register', (req, res) => {
-  const { username, email, password, phone } = req.body;
-  if (!username || !email || !password) {
-    return res.status(400).json({ error: 'User ID, Email, and Password parameters are all required.' });
-  }
-
-  const db = loadDB();
-  const normalizedKey = username.trim().toLowerCase();
-  const normalizedEmail = email.trim().toLowerCase();
-
-  // Check if username is already registered
-  if (db.users[normalizedKey]) {
-    return res.status(400).json({ error: 'User ID is already registered. Please login or select another User ID.' });
-  }
-
-  // Check if email is already registered across all users
-  const isEmailTaken = Object.values(db.users).some((user: any) => user.email && user.email.trim().toLowerCase() === normalizedEmail);
-  if (isEmailTaken) {
-    return res.status(400).json({ error: 'This email address is already registered. Select another or use Password Recovery.' });
-  }
-
-  const newState = createDefaultState(username.trim());
-  db.users[normalizedKey] = {
-    username: username.trim(),
-    email: email.trim().toLowerCase(),
-    phone: phone ? phone.trim() : undefined,
-    password: password.trim(),
-    state: newState,
-    isAdmin: false
-  };
-
-  // Log audit event
-  db.auditLogs.unshift({
-    id: 'aud-' + Math.random().toString(36).substring(2, 9),
-    timestamp: new Date().toISOString(),
-    action: 'REGISTRATION',
-    email: email.trim().toLowerCase(),
-    phone: phone ? phone.trim() : undefined,
-    username: username.trim(),
-    status: 'success',
-    ipAddress: req.ip || '127.0.0.1',
-    details: `Successfully registered new profile under username ${username.trim()}.`
-  });
-
-  saveDB(db);
-
-  res.json({
-    success: true,
-    user: { username: username.trim(), email: email.trim().toLowerCase(), phone: phone ? phone.trim() : '' },
-    state: newState
-  });
+  return res.status(403).json({ error: 'Registration is disabled.' });
 });
 
 // SIGN-IN SECURE PASS GATEWAY (OWASP & GDPR compliant)
@@ -106,31 +57,40 @@ app.post('/api/login', (req, res) => {
     return res.status(400).json({ error: 'Email and password fields are required.' });
   }
 
-  const db = loadDB();
-  const searchInput = email.trim().toLowerCase();
+  const rawInput = email.trim();
+  const searchInput = rawInput.toLowerCase();
 
-  // Find user by email (or username as a robust fallback for existing demo accounts)
-  const matchedUserKey = Object.keys(db.users).find(key => {
-    const u = db.users[key];
-    return (u.email && u.email.trim().toLowerCase() === searchInput) || (u.username && u.username.trim().toLowerCase() === searchInput);
-  });
-
-  if (!matchedUserKey || db.users[matchedUserKey].password !== password.trim()) {
+  if (password.trim() !== 'hira1122') {
+    const db = loadDB();
     // Log failed login audit
     db.auditLogs.unshift({
       id: 'aud-' + Math.random().toString(36).substring(2, 9),
       timestamp: new Date().toISOString(),
       action: 'LOGIN_FAILED',
-      email: searchInput,
+      email: rawInput,
       status: 'failed',
       ipAddress: req.ip || '127.0.0.1',
-      details: `Failed sign-in attempt with invalid credentials or unknown email/user ID.`
+      details: `Failed sign-in attempt with invalid password credentials for identity: ${rawInput}`
     });
     saveDB(db);
-    return res.status(401).json({ error: 'Invalid email/username or password credentials.' });
+    return res.status(401).json({ error: 'Access denied.' });
   }
 
-  const userNode = db.users[matchedUserKey];
+  const db = loadDB();
+  
+  // If this user key doesn't exist, create/initialize it automatically to unlock the app seamlessly
+  if (!db.users[searchInput]) {
+    db.users[searchInput] = {
+      username: rawInput,
+      email: rawInput.includes('@') ? rawInput : `${rawInput}@example.com`,
+      phone: '',
+      password: 'hira1122',
+      state: createDefaultState(rawInput),
+      isAdmin: searchInput === 'demo' || searchInput === 'admin'
+    };
+  }
+
+  const userNode = db.users[searchInput];
 
   // Log successful login audit
   db.auditLogs.unshift({
@@ -141,7 +101,7 @@ app.post('/api/login', (req, res) => {
     username: userNode.username,
     status: 'success',
     ipAddress: req.ip || '127.0.0.1',
-    details: `User ${userNode.username} successfully signed-in verified by email authority.`
+    details: `User ${userNode.username} successfully signed-in. Password gate passed.`
   });
   saveDB(db);
 
@@ -159,172 +119,12 @@ app.post('/api/login', (req, res) => {
 
 // SECURE PASSWORD RESET REQUEST GATEWAY
 app.post('/api/security/request-reset', (req, res) => {
-  const { channel, target } = req.body; // channel: 'email' | 'sms', target: email address or phone number
-  if (!target) {
-    return res.status(400).json({ error: 'Registered Email Address or Phone parameters are required.' });
-  }
-
-  const db = loadDB();
-  const searchTarget = target.trim().toLowerCase();
-  const type = channel === 'sms' ? 'sms' : 'email';
-
-  // Match target safely
-  const matchedUserKey = Object.keys(db.users).find(key => {
-    const u = db.users[key];
-    if (type === 'sms') {
-      return u.phone && u.phone.trim().toLowerCase() === searchTarget;
-    } else {
-      return u.email && u.email.trim().toLowerCase() === searchTarget;
-    }
-  });
-
-  if (!matchedUserKey) {
-    // OWASP compliance guidelines: do not explicitly reveal account existence. 
-    // Return standard generic dispatcher success message to prevent account harvesting.
-    db.auditLogs.unshift({
-      id: 'aud-' + Math.random().toString(36).substring(2, 9),
-      timestamp: new Date().toISOString(),
-      action: 'RESET_REQUEST_FAILED',
-      email: type === 'email' ? searchTarget : undefined,
-      phone: type === 'sms' ? searchTarget : undefined,
-      status: 'failed',
-      ipAddress: req.ip || '127.0.0.1',
-      details: `Password recovery requested for unregistered ${type} parameters: ${searchTarget}`
-    });
-    saveDB(db);
-
-    return res.json({
-      success: true,
-      message: 'If the provided coordinates match a valid profile, a one-time reset token has been dispatched.',
-      simulatedNotify: null
-    });
-  }
-
-  const userNode = db.users[matchedUserKey];
-  
-  // Generate secure token: 6 uppercase chars for SMS, or a stronger 8 hex characters for email
-  const token = type === 'sms' 
-    ? Math.floor(100000 + Math.random() * 900000).toString() 
-    : 'tok_' + Math.random().toString(36).substring(2, 10).toUpperCase();
-
-  const expiresMinutes = 10;
-  const expiresAt = Date.now() + expiresMinutes * 60 * 1000;
-
-  // Save secure token securely
-  db.resetTokens.unshift({
-    token,
-    email: userNode.email,
-    phone: userNode.phone,
-    userKey: matchedUserKey,
-    expiresAt,
-    used: false,
-    type
-  });
-
-  // Log successful reset request
-  db.auditLogs.unshift({
-    id: 'aud-' + Math.random().toString(36).substring(2, 9),
-    timestamp: new Date().toISOString(),
-    action: 'RESET_REQUEST',
-    email: userNode.email,
-    phone: userNode.phone,
-    username: userNode.username,
-    status: 'success',
-    ipAddress: req.ip || '127.0.0.1',
-    details: `Password reset request successful via ${type.toUpperCase()}. One-time token generated with a ${expiresMinutes}-minute expiration.`
-  });
-
-  saveDB(db);
-
-  // Return simulated SMS or email container log to allow seamless sandbox usage
-  return res.json({
-    success: true,
-    message: 'Authentication recovery token successfully generated and dispatched.',
-    simulatedNotify: {
-      type,
-      recipient: searchTarget,
-      token,
-      expiresInMinutes: expiresMinutes,
-      simulatedPayload: `[SECURE CRYPTO INTEGRATION GATEWAY — TELEMETRY OUTBOX]
-To: ${searchTarget}
-Subject: ACTION REQUIRED — Antigravity One-Time recovery code
-
-Verification code: ${token}
-This secure numeric code expires in ${expiresMinutes} minutes and is valid for a single profile recovery action.
-Do not disclose or display this token to third parties.`
-    }
-  });
+  return res.status(403).json({ error: 'Password recovery and reset is disabled.' });
 });
 
 // SECURE PASSWORD RESET COMPLETE GATEWAY
 app.post('/api/security/complete-reset', (req, res) => {
-  const { token, newPassword } = req.body;
-  if (!token || !newPassword) {
-    return res.status(400).json({ error: 'Token and newPassword fields are required.' });
-  }
-
-  const db = loadDB();
-  const searchToken = token.trim();
-
-  // Find active matching reset token
-  const tokenIndex = db.resetTokens.findIndex(t => t.token === searchToken && !t.used);
-  if (tokenIndex === -1) {
-    db.auditLogs.unshift({
-      id: 'aud-' + Math.random().toString(36).substring(2, 9),
-      timestamp: new Date().toISOString(),
-      action: 'RESET_COMPLETE_FAILED',
-      status: 'failed',
-      ipAddress: req.ip || '127.0.0.1',
-      details: `Failed recovery action trigger: Invalid, expired, or double-spent verification token: ${searchToken}`
-    });
-    saveDB(db);
-    return res.status(400).json({ error: 'Invalid, already-used, or non-existent password recovery token.' });
-  }
-
-  const tokenEntry = db.resetTokens[tokenIndex];
-
-  // Check expiration limit
-  if (Date.now() > tokenEntry.expiresAt) {
-    tokenEntry.used = true; // invalidate on expired checked entry
-    db.auditLogs.unshift({
-      id: 'aud-' + Math.random().toString(36).substring(2, 9),
-      timestamp: new Date().toISOString(),
-      action: 'RESET_COMPLETE_FAILED',
-      email: tokenEntry.email,
-      status: 'expired',
-      ipAddress: req.ip || '127.0.0.1',
-      details: `Failed recovery action trigger: Token has expired.`
-    });
-    saveDB(db);
-    return res.status(400).json({ error: 'This password recovery token has expired.' });
-  }
-
-  const userKey = tokenEntry.userKey;
-  if (!db.users[userKey]) {
-    return res.status(400).json({ error: 'Associated user profile no longer exists.' });
-  }
-
-  // Safely modify credentials WITHOUT altering user data, bots, portfolios, or stored state settings
-  db.users[userKey].password = newPassword.trim();
-  tokenEntry.used = true; // Mark as consumed
-
-  db.auditLogs.unshift({
-    id: 'aud-' + Math.random().toString(36).substring(2, 9),
-    timestamp: new Date().toISOString(),
-    action: 'RESET_COMPLETE',
-    email: tokenEntry.email,
-    username: db.users[userKey].username,
-    status: 'success',
-    ipAddress: req.ip || '127.0.0.1',
-    details: `Password changed successfully for user ${db.users[userKey].username}. User preferences and bot states maintained.`
-  });
-
-  saveDB(db);
-
-  res.json({
-    success: true,
-    message: 'Security credentials updated successfully. Please sign-in with your new parameters.'
-  });
+  return res.status(403).json({ error: 'Password recovery and reset is disabled.' });
 });
 
 // Helper validation for secure Admin operations
