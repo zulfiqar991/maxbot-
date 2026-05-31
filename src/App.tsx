@@ -603,6 +603,7 @@ export default function App() {
               state={state}
               onUpdateSettings={handleUpdateExchangeSettings}
               coinPrices={coinPrices}
+              username={currentUser?.username || 'demo'}
             />
           )}
 

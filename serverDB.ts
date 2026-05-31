@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { AccountState, SignalBot, GridBot, GridLine, Deal, SignalLog } from './src/types';
+import { fetchRealExchangeBalances } from './serverExchangeFetch';
 
 export const DB_PATH = path.join(process.cwd(), 'db.json');
 
@@ -298,10 +299,38 @@ export function runSimulationTick() {
 
         // Live drift updates in real-time (micro-variations for high-fidelity interactive look)
         if (cred.isEnabled) {
-          const driftSpot = (Math.random() * 2 - 1) * 0.05;
-          const driftFut = (Math.random() * 2 - 1) * 0.05;
-          cred.spotBalance = parseFloat(Math.max(10, (cred.spotBalance + driftSpot)).toFixed(2));
-          cred.futuresBalance = parseFloat(Math.max(10, (cred.futuresBalance + driftFut)).toFixed(2));
+          const key = cred.apiKey ? cred.apiKey.trim() : '';
+          const secret = cred.apiSecret ? cred.apiSecret.trim() : '';
+          const isMockKey = 
+            !key || 
+            key.length < 16 || 
+            key.includes('***') || 
+            key.startsWith('bin_api') || 
+            key.startsWith('mock') || 
+            secret.includes('*');
+
+          if (!isMockKey) {
+            // Clear continuous real-time balance fetching while bot/routing is allowed
+            const tickKey = `tick_count_${cred.id}`;
+            const currentTick = (global as any)[tickKey] || 0;
+            (global as any)[tickKey] = (currentTick + 1) % 4; // Fetch real API once every 16 seconds
+            if (currentTick === 0) {
+              fetchRealExchangeBalances(cred)
+                .then(res => {
+                  cred.spotBalance = res.spotBalance;
+                  cred.futuresBalance = res.futuresBalance;
+                  cred.realBalance = res.totalBalance;
+                  cred.balance = res.totalBalance;
+                  cred.wsStatus = res.wsStatus;
+                })
+                .catch(() => {});
+            }
+          } else {
+            const driftSpot = (Math.random() * 2 - 1) * 0.05;
+            const driftFut = (Math.random() * 2 - 1) * 0.05;
+            cred.spotBalance = parseFloat(Math.max(10, (cred.spotBalance + driftSpot)).toFixed(2));
+            cred.futuresBalance = parseFloat(Math.max(10, (cred.futuresBalance + driftFut)).toFixed(2));
+          }
         }
 
         // Real balance is spot + futures
