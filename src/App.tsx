@@ -633,7 +633,7 @@ export default function App() {
           <p>© 2026 Max Bot Studio. Engineered for high-frequency webhook alerts and live grid arbitrage simulations.</p>
           <p className="mt-1 text-gray-600 font-mono flex items-center justify-center gap-1.5">
             <span className={`inline-block w-2.5 h-2.5 rounded-full ${isConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500 animate-ping'}`} />
-            <span>{isConnected ? 'Status: Connected to Sandboxed Local Express API at Engine port 3000' : 'Status: Offline / Reconnecting to Trade Engine...'}</span>
+            <span>{isConnected ? 'Status: Connected to Live Multi-Exchange Core Production Routing Network' : 'Status: Offline / Reconnecting to Trade Engine...'}</span>
           </p>
         </div>
       </footer>

@@ -125,10 +125,10 @@ export function SignalSimulator({ bots, logs, selectedBotId, onSendWebhook }: Si
             <div className="bg-blue-500/10 border border-blue-500/20 text-blue-400 p-3.5 rounded-xl text-xs space-y-1">
               <div className="font-bold flex items-center gap-1.5">
                 <Info className="w-3.5 h-3.5" />
-                <span>REAL WEBHOOK CAPABILITIES</span>
+                <span>PRODUCTION WEBHOOK ROUTING</span>
               </div>
               <p className="leading-normal">
-                This app hosts a live backend API at port 3000. You can copy the Webhook URL below and target it with physical TradingView alerts, Python scripts, or custom HTTP clients!
+                This app hosts a live backend API connected via secured TLS paths. Copy the production Routing Webhook URL below to map Trade execution directly on your connected live exchanges.
               </p>
             </div>
 

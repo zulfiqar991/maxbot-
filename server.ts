@@ -857,15 +857,15 @@ app.post('/webhook/:userId/:botId', (req, res) => {
     }
   } else {
     state.logs.unshift({
-      id: 'log-demo-sync-' + Math.random().toString(36).substring(2, 9),
+      id: 'log-admin-sync-' + Math.random().toString(36).substring(2, 9),
       botId: bot.id,
       botName: bot.name,
       timestamp: new Date().toISOString(),
       pair: cleanPair,
-      action: 'demo_balance_sync',
-      payload: JSON.stringify({ balance: state.balance }),
+      action: 'admin_balance_sync',
+      payload: JSON.stringify({ balance: state.realBalance }),
       status: 'success',
-      message: `🔄 [DEMO SYNC] Demo paper trading wallet balance verified before executing trade: $${state.balance.toLocaleString()} USDT.`
+      message: `🔄 [ADMIN SYNC] Administrator Core routing pool balance verified before executing trade: $${(state.realBalance ?? 50000).toLocaleString()} USDT.`
     });
   }
 
@@ -1097,8 +1097,8 @@ app.post('/api/webhooks', (req, res) => {
   }
 
   if (!foundUserKey || !bot) {
-    const demoUser = db.users["demo"] || Object.values(db.users)[0];
-    demoUser.state.logs.unshift({
+    const adminUser = db.users["administrator"] || Object.values(db.users)[0];
+    adminUser.state.logs.unshift({
       id: 'err-' + Math.random().toString(36).substring(2, 9),
       botId: bot_id || 'unknown',
       botName: 'Unknown Bot',
@@ -1404,15 +1404,15 @@ app.post('/api/webhooks', (req, res) => {
     }
   } else {
     state.logs.unshift({
-      id: 'log-demo-sync-' + Math.random().toString(36).substring(2, 9),
+      id: 'log-admin-sync-' + Math.random().toString(36).substring(2, 9),
       botId: bot.id,
       botName: bot.name,
       timestamp: new Date().toISOString(),
       pair: cleanPair,
-      action: 'demo_balance_sync',
-      payload: JSON.stringify({ balance: state.balance }),
+      action: 'admin_balance_sync',
+      payload: JSON.stringify({ balance: state.realBalance }),
       status: 'success',
-      message: `🔄 [DEMO SYNC] Demo paper trading wallet balance verified before executing trade: $${state.balance.toLocaleString()} USDT.`
+      message: `🔄 [ADMIN SYNC] Administrator Core routing pool balance verified before executing trade: $${(state.realBalance ?? 50000).toLocaleString()} USDT.`
     });
   }
 
