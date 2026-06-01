@@ -49,17 +49,6 @@ export function ExchangeManager({ state, onUpdateSettings, coinPrices = {}, user
       tag: 'BINANCE LIVE'
     },
     { 
-      name: 'Binance Demo', 
-      rest: 'https://testnet.binancefuture.com', 
-      ws: 'wss://fstream.binance.com', 
-      portal: 'https://testnet.binancefuture.com',
-      defaultPairs: ['BTC/USDT', 'ETH/USDT', 'LINK/USDT'],
-      spotScale: 0.30,
-      futuresScale: 0.70,
-      themeColor: 'from-orange-500/10 to-transparent border-orange-500/20 text-orange-400',
-      tag: 'BINANCE FUTURES DEMO'
-    },
-    { 
       name: 'Bybit', 
       rest: 'https://api.bybit.com', 
       ws: 'wss://stream.bybit.com/v5/private', 

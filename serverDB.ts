@@ -101,7 +101,7 @@ export function normalizePair(pairStr: string): string {
 export const createDefaultState = (username: string): AccountState => ({
   balance: 10000,
   realBalance: 50000,
-  accountMode: 'paper',
+  accountMode: 'real',
   exchangeCredentials: [
     {
       id: 'cred-1',
@@ -129,37 +129,57 @@ export function loadDB(): DBStructure {
     console.error("Error reading file db.json, generating fallback store...", err);
   }
 
+  const defaultAdmin = {
+    username: "Administrator",
+    email: "admin@maxbot.io",
+    phone: "+123456789",
+    password: "admin",
+    state: createDefaultState("Administrator"),
+    isAdmin: true
+  };
+
   if (!db || !db.users) {
     db = {
       users: {
-        "demo": {
-          username: "demo",
-          email: "demo@example.com",
-          phone: "+15550199",
-          password: "demo",
-          state: createDefaultState("demo"),
-          isAdmin: true
-        }
+        "administrator": defaultAdmin
       },
       auditLogs: [],
       resetTokens: []
     };
   }
 
+  // Ensure 'administrator' is present and fully cleared as administrator
+  if (!db.users["administrator"]) {
+    db.users["administrator"] = defaultAdmin;
+  } else {
+    db.users["administrator"].isAdmin = true;
+    if (!db.users["administrator"].state) {
+      db.users["administrator"].state = createDefaultState("Administrator");
+    }
+    db.users["administrator"].state.accountMode = 'real';
+  }
+
+  // Auto-migrate old 'demo' user if it exists in historical databases
+  if (db.users["demo"]) {
+    const demoNode = db.users["demo"];
+    db.users["administrator"].state = {
+      ...db.users["administrator"].state,
+      ...demoNode.state
+    };
+    db.users["administrator"].state.accountMode = 'real';
+    delete db.users["demo"];
+  }
+
+  // Remove any non-admin/customizable accounts to safeguard Administrator privilege limit
+  Object.keys(db.users).forEach(key => {
+    if (key !== "administrator") {
+      delete db.users[key];
+    }
+  });
+
   // Backfill safety properties
   if (!db.auditLogs) db.auditLogs = [];
   if (!db.resetTokens) db.resetTokens = [];
-
-  // Ensure admin flag on demo is enabled for developer preview
-  if (db.users["demo"]) {
-    db.users["demo"].isAdmin = true;
-    if (!db.users["demo"].email) {
-      db.users["demo"].email = "demo@example.com";
-    }
-    if (!db.users["demo"].phone) {
-      db.users["demo"].phone = "+15550199";
-    }
-  }
 
   return db as DBStructure;
 }
@@ -193,14 +213,22 @@ export function saveDB(db: DBStructure) {
 
 export function getUserStateFromHeader(authorizationHeader: string | undefined): { username: string; state: AccountState } {
   const db = loadDB();
-  let username = "demo";
+  let username = "administrator";
   if (authorizationHeader && authorizationHeader.startsWith('Bearer ')) {
     const extracted = authorizationHeader.split(' ')[1];
     if (db.users[extracted.toLowerCase()]) {
       username = extracted;
+    } else if (extracted.toLowerCase() === 'demo') {
+      username = "administrator";
     }
   }
-  const userNode = db.users[username.toLowerCase()] || db.users["demo"];
+  const userNode = db.users[username.toLowerCase()] || db.users["administrator"];
+  
+  // Force Real Trading Mode for the dashboard metrics
+  if (userNode && userNode.state) {
+    userNode.state.accountMode = 'real';
+  }
+
   return {
     username: userNode.username,
     state: userNode.state

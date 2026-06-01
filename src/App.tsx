@@ -32,16 +32,16 @@ export default function App() {
   
   // Set up current user auth session - Direct, unrestricted access enabled
   const [currentUser, setCurrentUser] = useState<{ username: string; email?: string; phone?: string; isAdmin?: boolean } | null>({
-    username: 'demo',
-    email: 'demo@example.com',
-    phone: '',
+    username: 'Administrator',
+    email: 'admin@maxbot.io',
+    phone: '+123456789',
     isAdmin: true
   });
 
   const [state, setState] = useState<AccountState>({
     balance: 10000,
     realBalance: 50000,
-    accountMode: 'paper',
+    accountMode: 'real',
     bots: [],
     gridBots: [],
     exchangeCredentials: [],
@@ -189,7 +189,7 @@ export default function App() {
     setState({
       balance: 10000,
       realBalance: 50000,
-      accountMode: 'paper',
+      accountMode: 'real',
       bots: [],
       gridBots: [],
       exchangeCredentials: [],
@@ -549,8 +549,8 @@ export default function App() {
               onChangeView={setView}
               exchangeCredentials={state.exchangeCredentials}
               realBalance={state.realBalance}
-              username={currentUser?.username || 'demo'}
-              accountMode={state.accountMode || 'paper'}
+              username={currentUser?.username || 'Administrator'}
+              accountMode={state.accountMode || 'real'}
               onUpdateSettings={handleUpdateExchangeSettings}
             />
           )}
@@ -576,7 +576,7 @@ export default function App() {
               deals={state.activeDeals}
               onCloseDeal={handleClosePosition}
               isClosing={isClosingDealId}
-              accountMode={state.accountMode || 'paper'}
+              accountMode={state.accountMode || 'real'}
             />
           )}
 
@@ -603,7 +603,7 @@ export default function App() {
               state={state}
               onUpdateSettings={handleUpdateExchangeSettings}
               coinPrices={coinPrices}
-              username={currentUser?.username || 'demo'}
+              username={currentUser?.username || 'Administrator'}
             />
           )}
 

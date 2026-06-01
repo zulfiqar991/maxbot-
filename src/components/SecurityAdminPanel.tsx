@@ -412,7 +412,7 @@ export function SecurityAdminPanel({ currentUser }: SecurityAdminPanelProps) {
                   <input
                     type="text"
                     required
-                    placeholder="e.g. demo"
+                    placeholder="e.g. administrator"
                     value={targetUsername}
                     onChange={(e) => setTargetUsername(e.target.value)}
                     className="w-full bg-[#070a13] border border-[#20293A] rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-orange-500 font-mono font-bold"

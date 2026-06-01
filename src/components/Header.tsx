@@ -11,10 +11,10 @@ interface HeaderProps {
 }
 
 export function Header({ state, onReset, isResetting, currentUser, onUpdateSettings }: HeaderProps) {
-  const accountMode = state.accountMode || 'paper';
+  const accountMode = 'real';
   // Filter active deals by selected mode (real or paper)
   const filteredDealsByMode = (state.activeDeals || []).filter(
-    d => ((d as any).accountMode || 'paper') === accountMode
+    d => ((d as any).accountMode || 'real') === accountMode
   );
 
   // Calculate total active deals metrics based on current mode
@@ -29,7 +29,7 @@ export function Header({ state, onReset, isResetting, currentUser, onUpdateSetti
     .filter(d => d.status !== 'active')
     .reduce((sum, d) => sum + d.pnl, 0);
 
-  const modeBalance = accountMode === 'real' ? (state.realBalance ?? 50000) : state.balance;
+  const modeBalance = state.realBalance ?? 50000;
   const netAssetValue = modeBalance + totalPnl;
 
   return (
@@ -46,46 +46,36 @@ export function Header({ state, onReset, isResetting, currentUser, onUpdateSetti
               <div className="flex items-center space-x-2">
                 <h1 className="text-xl font-bold text-white tracking-tight leading-none text-orange-500 font-sans">Max Bot</h1>
                 <span className="bg-[#FF5A00]/10 text-[#FF5A00] text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border border-[#FF5A00]/20 font-sans">
-                  Quantum AI Engine
+                  CONCURRENT MULTI-API CORE
                 </span>
               </div>
-              <p className="text-xs text-gray-400 mt-1 font-sans">High-Frequency Webhook & Live Grid Suite</p>
+              <p className="text-xs text-gray-400 mt-1 font-sans">Enterprise Webhook Routing & High-Frequency Suite</p>
             </div>
           </div>
 
           {/* Stats Bar */}
           <div className="flex flex-wrap items-center gap-4 lg:gap-6 bg-[#111827] border border-[#1E293B] rounded-xl px-5 py-3 shadow-md">
             
-            <button
+            <div
               id="header_toggle_mode_btn"
-              onClick={() => {
-                if (onUpdateSettings) {
-                  const nextMode = accountMode === 'real' ? 'paper' : 'real';
-                  onUpdateSettings({ accountMode: nextMode });
-                }
-              }}
-              className={`flex flex-col min-w-[125px] text-left transition-all hover:brightness-110 cursor-pointer active:scale-95 rounded-lg p-1.5 border ${
-                accountMode === 'real' 
-                  ? 'bg-emerald-500/10 border-emerald-500/25' 
-                  : 'bg-orange-500/10 border-orange-500/25'
-              }`}
-              title="Click to toggle between Paper Simulation and Real Trading mode"
+              className="flex flex-col min-w-[145px] text-left rounded-lg p-1.5 border bg-emerald-500/10 border-emerald-500/25 select-none"
+              title="Administrator Account Mode: Connected directly to Exchange Core APIs"
             >
-              <span className="text-[10px] text-gray-400 font-mono uppercase tracking-wider flex items-center gap-1">
-                <span className={`w-1.5 h-1.5 rounded-full ${accountMode === 'real' ? 'bg-emerald-500 animate-pulse' : 'bg-orange-500 animate-pulse'}`}></span>
-                {accountMode === 'real' ? 'REAL BALANCE' : 'PAPER BALANCE'}
+              <span className="text-[10px] text-emerald-400 font-mono uppercase tracking-wider flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
+                ADMIN REAL SECURE
               </span>
-              <span className={`text-sm font-bold font-mono mt-0.5 ${accountMode === 'real' ? 'text-emerald-400' : 'text-orange-400'}`}>
+              <span className="text-sm font-bold font-mono mt-0.5 text-emerald-400">
                 ${modeBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
-            </button>
+            </div>
 
             <div className="hidden sm:block border-l border-[#1E293B] h-8" />
 
             <div className="flex flex-col min-w-[100px]">
               <span className="text-[10px] text-gray-400 font-mono uppercase tracking-wider">PORTFOLIO VALUE</span>
               <span className="text-sm font-semibold font-mono text-white mt-0.5">
-                ${((state.accountMode === 'real' ? (state.realBalance ?? 50000) : state.balance) + totalPnl).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                ${(modeBalance + totalPnl).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
             </div>
 
@@ -125,7 +115,7 @@ export function Header({ state, onReset, isResetting, currentUser, onUpdateSetti
                 <User className="w-3.5 h-3.5 text-orange-500" /> ACTIVE PROFILE
               </span>
               <span className="text-xs font-semibold font-mono text-white mt-0.5 truncate max-w-[140px]" title={currentUser ? currentUser.username : ''}>
-                {currentUser ? currentUser.username : 'DEMO USER'}
+                {currentUser ? currentUser.username : 'ADMINISTRATOR'}
               </span>
             </div>
 

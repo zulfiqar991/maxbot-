@@ -56,12 +56,12 @@ export function WebhookBotCard({
       const origin = window.location.origin;
       if (useVpsPort80 && vpsWebhookHost) {
         const cleanHost = vpsWebhookHost.replace(/^(https?:\/\/)?/, '').replace(/\/$/, '');
-        setWebhookUrl(`http://${cleanHost}/webhook/${username || 'demo'}/${bot.id}`);
+        setWebhookUrl(`http://${cleanHost}/webhook/${username || 'Administrator'}/${bot.id}`);
       } else {
-        setWebhookUrl(bot.webhookUrl || `${origin}/webhook/${username || 'demo'}/${bot.id}`);
+        setWebhookUrl(bot.webhookUrl || `${origin}/webhook/${username || 'Administrator'}/${bot.id}`);
       }
     } else {
-      setWebhookUrl(bot.webhookUrl || `https://crypto-trading-bot-terminal.asia-southeast1.run.app/webhook/${username || 'demo'}/${bot.id}`);
+      setWebhookUrl(bot.webhookUrl || `https://crypto-trading-bot-terminal.asia-southeast1.run.app/webhook/${username || 'Administrator'}/${bot.id}`);
     }
   }, [useVpsPort80, vpsWebhookHost, bot.webhookUrl, username, bot.id]);
 

@@ -222,47 +222,26 @@ if (sellSignal)
     <div className="space-y-6">
 
       {/* Dynamic Account Mode Toggle Banner */}
-      <div className="bg-[#111827] border border-[#1E293B] rounded-2xl p-5 shadow-lg relative overflow-hidden">
-        <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-gradient-to-l from-[#FF5A00]/5 to-transparent pointer-events-none" />
+      <div className="bg-gradient-to-r from-[#111827] to-[#0D1525] border border-[#1E293B] rounded-2xl p-5 shadow-lg relative overflow-hidden">
+        <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-gradient-to-l from-emerald-500/5 to-transparent pointer-events-none" />
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-1 md:max-w-xl">
             <div className="flex items-center gap-2">
-              <span className={`inline-flex items-center gap-1 text-[10px] uppercase font-mono px-2 py-0.5 rounded font-extrabold ${accountMode === 'real' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 animate-pulse' : 'bg-orange-500/10 text-orange-500 border border-orange-500/20'}`}>
-                {accountMode === 'real' ? 'Real Execution Mode Active' : 'Paper Trading / Sandbox Mode Active'}
+              <span className="inline-flex items-center gap-1.5 text-[10px] uppercase font-mono px-2 py-0.5 rounded font-extrabold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 animate-pulse">
+                <Shield className="w-3 h-3 text-emerald-400" />
+                Administrator Account Mode Active
               </span>
-              <span className="text-[10px] text-gray-400 font-mono">Max Bot Core Gateway</span>
+              <span className="text-[10px] text-gray-400 font-mono">Max Bot 2026 Core Gateway</span>
             </div>
-            <h3 className="text-base font-bold text-white tracking-tight">Select Trading Execution Pipeline</h3>
+            <h3 className="text-base font-bold text-white tracking-tight">Enterprise Multi-API Router Pipeline</h3>
             <p className="text-xs text-gray-400 leading-relaxed">
-              Toggle between risk-free virtual balance paper trading (simulated sandbox execution) or connect live exchange REST/WebSocket APIs with secure sub-API key pipelines.
+              Operating under sovereign administrative security guidelines. Unrestricted access to multi-channel execution pipelines, real-time WebSocket stream logs, and live key portfolios. Sandbox and Paper Trading simulation arrays are bypassed.
             </p>
           </div>
 
-          <div className="bg-slate-950 border border-slate-800 rounded-xl p-1 flex gap-1.5 self-start md:self-center shrink-0">
-            <button
-              id="dashboard_paper_mode_btn"
-              onClick={() => onUpdateSettings?.({ accountMode: 'paper' })}
-              className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                accountMode === 'paper'
-                  ? 'bg-[#FF5A00] text-black shadow-lg font-extrabold'
-                  : 'text-gray-400 hover:text-white hover:bg-slate-900'
-              }`}
-            >
-              <Pause className="w-3.5 h-3.5 fill-current" />
-              <span>Paper Trading Mode</span>
-            </button>
-            <button
-              id="dashboard_real_mode_btn"
-              onClick={() => onUpdateSettings?.({ accountMode: 'real' })}
-              className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                accountMode === 'real'
-                  ? 'bg-emerald-500 text-black shadow-lg font-extrabold'
-                  : 'text-gray-400 hover:text-white hover:bg-slate-900'
-              }`}
-            >
-              <Play className="w-3.5 h-3.5 fill-current animate-pulse" />
-              <span>Real Trading Mode</span>
-            </button>
+          <div className="bg-slate-950/80 border border-emerald-500/25 rounded-xl p-3 px-4 flex items-center gap-3 self-start md:self-center shrink-0">
+            <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-ping" />
+            <span className="text-xs font-bold font-mono text-emerald-400 uppercase tracking-wider">LIVE LINK CONFIRMED</span>
           </div>
         </div>
       </div>

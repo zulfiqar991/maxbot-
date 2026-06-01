@@ -23,7 +23,7 @@ export function BotCreator({ onSave, onSaveGrid, isSaving, onCancel, botToEdit, 
 
   // Common config states
   const [exchange, setExchange] = useState(
-    botToEdit?.exchange || gridBotToEdit?.exchange || 'Paper Trading'
+    botToEdit?.exchange || gridBotToEdit?.exchange || 'Binance.com Spot'
   );
   const [strategyType, setStrategyType] = useState<'spot' | 'futures'>(
     botToEdit?.strategyType || gridBotToEdit?.strategyType || 'futures'
@@ -125,7 +125,6 @@ export function BotCreator({ onSave, onSaveGrid, isSaving, onCancel, botToEdit, 
   const [message, setMessage] = useState<string | null>(null);
 
   const availableExchanges = [
-    { name: 'Paper Trading', desc: 'Simulated Demo Wallet', fee: '0%' },
     { name: 'Binance.com Spot', desc: 'Binance.com Classic Spot API', fee: '0.1%' },
     { name: 'Binance.com Futures', desc: 'Binance.com USD-M Futures', fee: '0.04%' },
     { name: 'WEEX.com Spot', desc: 'WEEX Classic Spot Trading', fee: '0.1%' },
@@ -387,7 +386,7 @@ export function BotCreator({ onSave, onSaveGrid, isSaving, onCancel, botToEdit, 
                     onChange={(e) => {
                       const selected = e.target.value;
                       setExchange(selected);
-                      if (selected !== 'Paper Trading' && selected !== 'Binance' && selected !== 'Bybit') {
+                      if (selected !== 'Binance' && selected !== 'Bybit') {
                         setStrategyType('spot');
                       }
                     }}
