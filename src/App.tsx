@@ -597,6 +597,7 @@ export default function App() {
         <div className="w-full">
           {view === 'dashboard' && (
             <BotsDashboard
+              state={state}
               bots={state.bots}
               gridBots={state.gridBots || []}
               activeDeals={state.activeDeals}

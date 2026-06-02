@@ -93,6 +93,10 @@ app.post('/api/exchange/sync', async (req, res) => {
     if (enabledCreds.length > 0) {
       const summedReal = enabledCreds.reduce((sum, c) => sum + (c.realBalance || c.balance || 0), 0);
       state.realBalance = parseFloat(summedReal.toFixed(2));
+      const summedSpot = enabledCreds.reduce((sum, c) => sum + (c.spotBalance || 0), 0);
+      state.realSpotBalance = parseFloat(summedSpot.toFixed(2));
+      const summedFutures = enabledCreds.reduce((sum, c) => sum + (c.futuresBalance || 0), 0);
+      state.realFuturesBalance = parseFloat(summedFutures.toFixed(2));
     }
 
     // Unshift clear connection audit logs so the user dashboard reflects websocket synchronization
@@ -322,7 +326,7 @@ app.post('/api/account-settings', (req, res) => {
   
   // Assign explicitly or merge key properties
   const keysToUpdate = [
-    'accountMode', 'exchangeCredentials', 'balance', 'realBalance',
+    'accountMode', 'activeAccountType', 'exchangeCredentials', 'balance', 'realBalance',
     'spotBalance', 'futuresBalance', 'realSpotBalance', 'realFuturesBalance',
     'telegramEnabled', 'telegramBotToken', 'telegramChatId',
     'whatsappEnabled', 'whatsappPhone', 'smsEnabled', 'smsPhone',

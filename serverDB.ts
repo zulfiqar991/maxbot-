@@ -114,6 +114,9 @@ export const createDefaultState = (username: string): AccountState => ({
 });
 
 export function ensureBalancesInitialized(state: AccountState) {
+  if (!state.activeAccountType) {
+    state.activeAccountType = 'spot';
+  }
   if (state.spotBalance === undefined || state.spotBalance === null) {
     state.spotBalance = parseFloat(((state.balance || 0) * 0.50).toFixed(2));
   }

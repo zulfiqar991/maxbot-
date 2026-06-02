@@ -88,19 +88,68 @@ export function Header({ state, onReset, isResetting, currentUser, onUpdateSetti
               </span>
             </div>
 
-            <div className="flex flex-col gap-1 min-w-[150px] border border-[#1E293B] rounded-lg p-1.5 bg-[#0F172A]/50">
-              <div className="flex justify-between items-center text-[10px] text-gray-400 font-mono gap-3">
-                <span className="uppercase tracking-wider">Spot Balance:</span>
-                <span className="text-emerald-400 font-bold">
-                  ${(accountMode === 'real' ? (state.realSpotBalance ?? 0) : (state.spotBalance ?? 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </span>
-              </div>
-              <div className="flex justify-between items-center text-[10px] text-gray-400 font-mono gap-3">
-                <span className="uppercase tracking-wider">Futures Balance:</span>
-                <span className="text-amber-400 font-bold">
-                  ${(accountMode === 'real' ? (state.realFuturesBalance ?? 0) : (state.futuresBalance ?? 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </span>
-              </div>
+            <div className="flex flex-col gap-1 min-w-[210px] border border-[#1E293B] rounded-lg p-1 bg-[#0F172A]/50">
+              {/* Spot Account Toggle button */}
+              <button
+                id="header_select_spot_btn"
+                onClick={async () => {
+                  if (onUpdateSettings) {
+                    await onUpdateSettings({ activeAccountType: 'spot' });
+                  }
+                }}
+                className={`flex justify-between items-center text-[10px] font-mono px-2 py-1 rounded transition-all cursor-pointer ${
+                  (state.activeAccountType || 'spot') === 'spot'
+                    ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-bold'
+                    : 'text-gray-400 hover:bg-slate-800/40 border border-transparent'
+                }`}
+                title="Set Spot Account as active for trading"
+              >
+                <div className="flex items-center gap-1">
+                  <span className={`w-1.5 h-1.5 rounded-full ${
+                    (state.activeAccountType || 'spot') === 'spot' ? 'bg-emerald-400 animate-pulse' : 'bg-gray-500'
+                  }`} />
+                  <span className="uppercase tracking-wider">Spot Account:</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span>
+                    ${(accountMode === 'real' ? (state.realSpotBalance ?? 0) : (state.spotBalance ?? 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                  {(state.activeAccountType || 'spot') === 'spot' && (
+                    <span className="text-[8px] bg-emerald-500 text-slate-950 font-black px-1 rounded-sm ml-1 transform scale-90">ACTIVE</span>
+                  )}
+                </div>
+              </button>
+
+              {/* Futures Account Toggle button */}
+              <button
+                id="header_select_futures_btn"
+                onClick={async () => {
+                  if (onUpdateSettings) {
+                    await onUpdateSettings({ activeAccountType: 'futures' });
+                  }
+                }}
+                className={`flex justify-between items-center text-[10px] font-mono px-2 py-1 rounded transition-all cursor-pointer ${
+                  (state.activeAccountType || 'spot') === 'futures'
+                    ? 'bg-amber-500/15 border border-amber-500/30 text-amber-400 font-bold'
+                    : 'text-gray-400 hover:bg-slate-800/40 border border-transparent'
+                }`}
+                title="Set Futures Account as active for trading"
+              >
+                <div className="flex items-center gap-1">
+                  <span className={`w-1.5 h-1.5 rounded-full ${
+                    (state.activeAccountType || 'spot') === 'futures' ? 'bg-amber-400 animate-pulse' : 'bg-gray-500'
+                  }`} />
+                  <span className="uppercase tracking-wider">Futures Account:</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span>
+                    ${(accountMode === 'real' ? (state.realFuturesBalance ?? 0) : (state.futuresBalance ?? 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                  {(state.activeAccountType || 'spot') === 'futures' && (
+                    <span className="text-[8px] bg-amber-500 text-slate-950 font-black px-1 rounded-sm ml-1 transform scale-90">ACTIVE</span>
+                  )}
+                </div>
+              </button>
             </div>
 
             <div className="hidden sm:block border-l border-[#1E293B] h-8" />

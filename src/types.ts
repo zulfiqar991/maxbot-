@@ -166,6 +166,7 @@ export interface AccountState {
   futuresBalance?: number;
   realSpotBalance?: number;
   realFuturesBalance?: number;
+  activeAccountType?: 'spot' | 'futures';
   accountMode?: 'paper' | 'real';
   exchangeCredentials?: ExchangeCredential[];
   activeDeals: Deal[];

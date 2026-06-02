@@ -4,6 +4,7 @@ import { SignalBot, GridBot, Deal, ExchangeCredential, AccountState } from '../t
 import { WebhookBotCard } from './WebhookBotCard';
 
 interface BotsDashboardProps {
+  state: AccountState;
   bots: SignalBot[];
   gridBots: GridBot[];
   activeDeals: Deal[];
@@ -25,6 +26,7 @@ interface BotsDashboardProps {
 }
 
 export function BotsDashboard({
+  state,
   bots,
   gridBots,
   activeDeals,
@@ -288,6 +290,127 @@ if (sellSignal)
           </div>
         </div>
       </div>
+
+      {/* 💳 SPOT vs FUTURES TRADING TERMINAL HUB */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5" id="spot_futures_terminal_hub">
+        
+        {/* SPOT CARD */}
+        <div 
+          onClick={() => onUpdateSettings && onUpdateSettings({ activeAccountType: 'spot' })}
+          className={`relative rounded-2xl p-6 border-2 transition-all duration-300 cursor-pointer hover:scale-[1.015] ${
+            (state.activeAccountType || 'spot') === 'spot'
+              ? 'bg-[#121E2C]/55 border-emerald-500/50 shadow-lg shadow-emerald-500/5'
+              : 'bg-[#121824]/80 border-slate-800 hover:border-slate-700'
+          }`}
+        >
+          {/* Top badging */}
+          <div className="flex justify-between items-center">
+            <span className="text-[10px] font-mono font-extrabold uppercase tracking-widest text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded">
+              Binance & OKX Spot Engine
+            </span>
+            {(state.activeAccountType || 'spot') === 'spot' ? (
+              <span className="flex items-center gap-1 text-[10px] font-mono font-black text-emerald-400 uppercase tracking-wider">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                Active Executive Account
+              </span>
+            ) : (
+              <span className="text-[10px] font-mono text-slate-500 font-bold uppercase">Click to Activate</span>
+            )}
+          </div>
+
+          <div className="mt-5 space-y-1">
+            <p className="text-xs text-gray-400 uppercase font-mono font-bold tracking-wider">Spot Account Balance</p>
+            <h3 className="text-3xl font-black font-mono text-white tracking-tight flex items-baseline gap-1">
+              <span>${(accountMode === 'real' ? (state.realSpotBalance ?? 0) : (state.spotBalance ?? 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              <span className="text-xs text-slate-400 font-bold">USDT</span>
+            </h3>
+          </div>
+
+          <div className="mt-5 space-y-2 border-t border-slate-800/60 pt-4">
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Allocated for immediate token acquisition, zero-interest trading pipelines, and long-term asset positioning. Core driver for **Grid Bot** and **Arbitrage Smart Bots**.
+            </p>
+            <div className="flex flex-wrap gap-1.5 pt-2 font-mono text-[9px] uppercase font-bold">
+              <span className="bg-slate-900 border border-slate-800 text-slate-355 text-slate-300 px-2 py-0.5 rounded">No Leverage Risk</span>
+              <span className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded">Spot Grid</span>
+              <span className="bg-sky-500/10 border border-sky-500/20 text-sky-450 px-2 py-0.5 rounded">Multi-Exchange</span>
+            </div>
+          </div>
+
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onUpdateSettings && onUpdateSettings({ activeAccountType: 'spot' });
+            }}
+            className={`w-full mt-6 py-2.5 rounded-xl font-bold font-sans text-xs uppercase tracking-wider cursor-pointer border transition-all ${
+              (state.activeAccountType || 'spot') === 'spot'
+                ? 'bg-emerald-500 text-slate-950 border-emerald-500 shadow-md hover:brightness-110 active:scale-98'
+                : 'bg-slate-900 hover:bg-slate-800 text-slate-300 border-slate-800 active:scale-98'
+            }`}
+          >
+            {(state.activeAccountType || 'spot') === 'spot' ? '✓ SPOT ACCOUNT DIRECTING webhooks' : 'SELECT SPOT ACCOUNT FOR TRADING'}
+          </button>
+        </div>
+
+        {/* FUTURES CARD */}
+        <div 
+          onClick={() => onUpdateSettings && onUpdateSettings({ activeAccountType: 'futures' })}
+          className={`relative rounded-2xl p-6 border-2 transition-all duration-300 cursor-pointer hover:scale-[1.015] ${
+            (state.activeAccountType || 'spot') === 'futures'
+              ? 'bg-[#1F1E24]/55 border-amber-500/50 shadow-lg shadow-amber-500/5'
+              : 'bg-[#121824]/80 border-slate-800 hover:border-slate-700'
+          }`}
+        >
+          {/* Top badging */}
+          <div className="flex justify-between items-center">
+            <span className="text-[10px] font-mono font-extrabold uppercase tracking-widest text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded">
+              USDT Perpetual Futures
+            </span>
+            {(state.activeAccountType || 'spot') === 'futures' ? (
+              <span className="flex items-center gap-1 text-[10px] font-mono font-black text-amber-400 uppercase tracking-wider">
+                <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                Active Executive Account
+              </span>
+            ) : (
+              <span className="text-[10px] font-mono text-slate-500 font-bold uppercase">Click to Activate</span>
+            )}
+          </div>
+
+          <div className="mt-5 space-y-1">
+            <p className="text-xs text-gray-400 uppercase font-mono font-bold tracking-wider">Futures Account Balance</p>
+            <h3 className="text-3xl font-black font-mono text-white tracking-tight flex items-baseline gap-1">
+              <span>${(accountMode === 'real' ? (state.realFuturesBalance ?? 0) : (state.futuresBalance ?? 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              <span className="text-xs text-slate-400 font-bold">USDT</span>
+            </h3>
+          </div>
+
+          <div className="mt-5 space-y-2 border-t border-slate-800/60 pt-4">
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Allocated for leveraged futures margin pools, short hedge deployments, and stop-loss trailing. Core driver for **Leveraged Webhook Signaling** and risk-adjusted trades.
+            </p>
+            <div className="flex flex-wrap gap-1.5 pt-2 font-mono text-[9px] uppercase font-bold">
+              <span className="bg-slate-900 border border-slate-800 text-slate-355 text-slate-300 px-2 py-0.5 rounded">Up to 125x Margin</span>
+              <span className="bg-amber-500/10 border border-amber-500/20 text-amber-400 px-2 py-0.5 rounded">Long/Short Hedging</span>
+              <span className="bg-rose-500/10 border border-rose-500/20 text-rose-450 px-2 py-0.5 rounded">Liquidation Protection</span>
+            </div>
+          </div>
+
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onUpdateSettings && onUpdateSettings({ activeAccountType: 'futures' });
+            }}
+            className={`w-full mt-6 py-2.5 rounded-xl font-bold font-sans text-xs uppercase tracking-wider cursor-pointer border transition-all ${
+              (state.activeAccountType || 'spot') === 'futures'
+                ? 'bg-amber-500 text-slate-950 border-amber-500 shadow-md hover:brightness-110 active:scale-98'
+                : 'bg-slate-900 hover:bg-slate-800 text-slate-300 border-slate-800 active:scale-98'
+            }`}
+          >
+            {(state.activeAccountType || 'spot') === 'futures' ? '✓ FUTURES ACCOUNT DIRECTING webhooks' : 'SELECT FUTURES ACCOUNT FOR TRADING'}
+          </button>
+        </div>
+
+      </div>
       
       {/* Real exchange connect balance panel */}
       {exchangeCredentials.length > 0 && (
@@ -380,15 +503,23 @@ if (sellSignal)
                   </div>
 
                   <div className="grid grid-cols-2 gap-2 text-[10px] font-mono leading-tight">
-                    <div>
-                      <span className="text-[8px] text-slate-500 block">SPOT BALANCE</span>
-                      <span className="text-slate-300 font-medium">
+                    <div className={`p-1.5 rounded transition-all ${
+                      (state.activeAccountType || 'spot') === 'spot' ? 'bg-emerald-500/10 border border-emerald-500/20' : 'opacity-70 border border-transparent'
+                    }`}>
+                      <span className={`text-[8px] block font-bold ${
+                        (state.activeAccountType || 'spot') === 'spot' ? 'text-emerald-400 font-extrabold' : 'text-slate-500'
+                      }`}>SPOT BALANCE {(state.activeAccountType || 'spot') === 'spot' && '⚡'}</span>
+                      <span className="text-slate-200 font-bold block mt-0.5">
                         ${(cred.spotBalance ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </span>
                     </div>
-                    <div>
-                      <span className="text-[8px] text-indigo-400 block">FUTURES BALANCE</span>
-                      <span className="text-slate-300 font-medium">
+                    <div className={`p-1.5 rounded transition-all ${
+                      (state.activeAccountType || 'spot') === 'futures' ? 'bg-amber-500/15 border border-amber-500/20' : 'opacity-70 border border-transparent'
+                    }`}>
+                      <span className={`text-[8px] block font-bold ${
+                        (state.activeAccountType || 'spot') === 'futures' ? 'text-amber-400 font-extrabold' : 'text-slate-500'
+                      }`}>FUTURES ACCOUNT {(state.activeAccountType || 'spot') === 'futures' && '⚡'}</span>
+                      <span className="text-slate-200 font-bold block mt-0.5">
                         ${(cred.futuresBalance ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </span>
                     </div>
