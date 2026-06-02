@@ -99,12 +99,12 @@ export function normalizePair(pairStr: string): string {
 }
 
 export const createDefaultState = (username: string): AccountState => ({
-  balance: 0,
-  realBalance: 0,
-  spotBalance: 0,
-  futuresBalance: 0,
-  realSpotBalance: 0,
-  realFuturesBalance: 0,
+  balance: 10000,
+  realBalance: 50000,
+  spotBalance: 5000,
+  futuresBalance: 5000,
+  realSpotBalance: 25000,
+  realFuturesBalance: 25000,
   accountMode: undefined,
   exchangeCredentials: [],
   activeDeals: [],
@@ -117,22 +117,47 @@ export function ensureBalancesInitialized(state: AccountState) {
   if (!state.activeAccountType) {
     state.activeAccountType = 'spot';
   }
-  if (state.spotBalance === undefined || state.spotBalance === null) {
-    state.spotBalance = parseFloat(((state.balance || 0) * 0.50).toFixed(2));
+  
+  if (state.balance === undefined || state.balance === null || typeof state.balance !== 'number') {
+    state.balance = 10000;
   }
-  if (state.futuresBalance === undefined || state.futuresBalance === null) {
-    state.futuresBalance = parseFloat(((state.balance || 0) * 0.50).toFixed(2));
+  
+  const hasNoSpot = state.spotBalance === undefined || state.spotBalance === null || typeof state.spotBalance !== 'number';
+  const hasNoFut = state.futuresBalance === undefined || state.futuresBalance === null || typeof state.futuresBalance !== 'number';
+  
+  if (hasNoSpot && hasNoFut) {
+    state.spotBalance = parseFloat((state.balance * 0.50).toFixed(2));
+    state.futuresBalance = parseFloat((state.balance * 0.50).toFixed(2));
+  } else if (hasNoSpot) {
+    state.spotBalance = parseFloat(Math.max(0, state.balance - (state.futuresBalance || 0)).toFixed(2));
+  } else if (hasNoFut) {
+    state.futuresBalance = parseFloat(Math.max(0, state.balance - (state.spotBalance || 0)).toFixed(2));
+  } else if (state.spotBalance === 0 && state.futuresBalance === 0 && state.balance > 0) {
+    state.spotBalance = parseFloat((state.balance * 0.50).toFixed(2));
+    state.futuresBalance = parseFloat((state.balance * 0.50).toFixed(2));
   }
-  // Ensure sum equals state.balance
+  
   state.balance = parseFloat(((state.spotBalance || 0) + (state.futuresBalance || 0)).toFixed(2));
 
-  if (state.realSpotBalance === undefined || state.realSpotBalance === null) {
-    state.realSpotBalance = parseFloat(((state.realBalance || 0) * 0.50).toFixed(2));
+  if (state.realBalance === undefined || state.realBalance === null || typeof state.realBalance !== 'number') {
+    state.realBalance = 50000;
   }
-  if (state.realFuturesBalance === undefined || state.realFuturesBalance === null) {
-    state.realFuturesBalance = parseFloat(((state.realBalance || 0) * 0.50).toFixed(2));
+  
+  const hasNoRealSpot = state.realSpotBalance === undefined || state.realSpotBalance === null || typeof state.realSpotBalance !== 'number';
+  const hasNoRealFut = state.realFuturesBalance === undefined || state.realFuturesBalance === null || typeof state.realFuturesBalance !== 'number';
+  
+  if (hasNoRealSpot && hasNoRealFut) {
+    state.realSpotBalance = parseFloat((state.realBalance * 0.50).toFixed(2));
+    state.realFuturesBalance = parseFloat((state.realBalance * 0.50).toFixed(2));
+  } else if (hasNoRealSpot) {
+    state.realSpotBalance = parseFloat(Math.max(0, state.realBalance - (state.realFuturesBalance || 0)).toFixed(2));
+  } else if (hasNoRealFut) {
+    state.realFuturesBalance = parseFloat(Math.max(0, state.realBalance - (state.realSpotBalance || 0)).toFixed(2));
+  } else if (state.realSpotBalance === 0 && state.realFuturesBalance === 0 && state.realBalance > 0) {
+    state.realSpotBalance = parseFloat((state.realBalance * 0.50).toFixed(2));
+    state.realFuturesBalance = parseFloat((state.realBalance * 0.50).toFixed(2));
   }
-  // Ensure sum equals state.realBalance
+  
   state.realBalance = parseFloat(((state.realSpotBalance || 0) + (state.realFuturesBalance || 0)).toFixed(2));
 }
 

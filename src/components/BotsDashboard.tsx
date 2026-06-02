@@ -331,7 +331,7 @@ if (sellSignal)
               Allocated for immediate token acquisition, zero-interest trading pipelines, and long-term asset positioning. Core driver for **Grid Bot** and **Arbitrage Smart Bots**.
             </p>
             <div className="flex flex-wrap gap-1.5 pt-2 font-mono text-[9px] uppercase font-bold">
-              <span className="bg-slate-900 border border-slate-800 text-slate-355 text-slate-300 px-2 py-0.5 rounded">No Leverage Risk</span>
+              <span className="bg-slate-900 border border-slate-800 text-slate-300 px-2 py-0.5 rounded">No Leverage Risk</span>
               <span className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded">Spot Grid</span>
               <span className="bg-sky-500/10 border border-sky-500/20 text-sky-450 px-2 py-0.5 rounded">Multi-Exchange</span>
             </div>
@@ -389,7 +389,7 @@ if (sellSignal)
               Allocated for leveraged futures margin pools, short hedge deployments, and stop-loss trailing. Core driver for **Leveraged Webhook Signaling** and risk-adjusted trades.
             </p>
             <div className="flex flex-wrap gap-1.5 pt-2 font-mono text-[9px] uppercase font-bold">
-              <span className="bg-slate-900 border border-slate-800 text-slate-355 text-slate-300 px-2 py-0.5 rounded">Up to 125x Margin</span>
+              <span className="bg-slate-900 border border-slate-800 text-slate-300 px-2 py-0.5 rounded">Up to 125x Margin</span>
               <span className="bg-amber-500/10 border border-amber-500/20 text-amber-400 px-2 py-0.5 rounded">Long/Short Hedging</span>
               <span className="bg-rose-500/10 border border-rose-500/20 text-rose-450 px-2 py-0.5 rounded">Liquidation Protection</span>
             </div>

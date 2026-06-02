@@ -949,15 +949,15 @@ app.post('/webhook/:userId/:botId', (req, res) => {
       const driftSpot = (Math.random() * 2 - 1) * 0.05;
       const driftFut = (Math.random() * 2 - 1) * 0.05;
       
-      if (activeKey.spotBalance !== undefined) {
+      if (activeKey.spotBalance !== undefined && activeKey.spotBalance !== null && activeKey.spotBalance !== 0) {
         activeKey.spotBalance = parseFloat(Math.max(10, activeKey.spotBalance + driftSpot).toFixed(2));
       } else {
-        activeKey.spotBalance = 5625;
+        activeKey.spotBalance = parseFloat(((activeKey.realBalance || activeKey.balance || 50000) * 0.50).toFixed(2));
       }
-      if (activeKey.futuresBalance !== undefined) {
+      if (activeKey.futuresBalance !== undefined && activeKey.futuresBalance !== null && activeKey.futuresBalance !== 0) {
         activeKey.futuresBalance = parseFloat(Math.max(10, activeKey.futuresBalance + driftFut).toFixed(2));
       } else {
-        activeKey.futuresBalance = 6875;
+        activeKey.futuresBalance = parseFloat(((activeKey.realBalance || activeKey.balance || 50000) * 0.50).toFixed(2));
       }
       
       activeKey.realBalance = parseFloat((activeKey.spotBalance + activeKey.futuresBalance).toFixed(2));
@@ -1502,15 +1502,15 @@ app.post('/api/webhooks', (req, res) => {
       const driftSpot = (Math.random() * 2 - 1) * 0.05;
       const driftFut = (Math.random() * 2 - 1) * 0.05;
       
-      if (activeKey.spotBalance !== undefined) {
+      if (activeKey.spotBalance !== undefined && activeKey.spotBalance !== null && activeKey.spotBalance !== 0) {
         activeKey.spotBalance = parseFloat(Math.max(10, activeKey.spotBalance + driftSpot).toFixed(2));
       } else {
-        activeKey.spotBalance = 5625;
+        activeKey.spotBalance = parseFloat(((activeKey.realBalance || activeKey.balance || 50000) * 0.50).toFixed(2));
       }
-      if (activeKey.futuresBalance !== undefined) {
+      if (activeKey.futuresBalance !== undefined && activeKey.futuresBalance !== null && activeKey.futuresBalance !== 0) {
         activeKey.futuresBalance = parseFloat(Math.max(10, activeKey.futuresBalance + driftFut).toFixed(2));
       } else {
-        activeKey.futuresBalance = 6875;
+        activeKey.futuresBalance = parseFloat(((activeKey.realBalance || activeKey.balance || 50000) * 0.50).toFixed(2));
       }
       
       activeKey.realBalance = parseFloat((activeKey.spotBalance + activeKey.futuresBalance).toFixed(2));
