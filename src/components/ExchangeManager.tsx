@@ -161,7 +161,7 @@ export function ExchangeManager({ state, onUpdateSettings, coinPrices = {}, user
     const restUrlToUse = isAdvanced ? customRest : selectedEx.rest;
     const wsUrlToUse = isAdvanced ? customWs : selectedEx.ws;
     const portalUrlToUse = isAdvanced ? customPortal : selectedEx.portal;
-    const defaultBal = parseFloat(initialBalance) || 20000;
+    const defaultBal = 0;
 
     const newCred: ExchangeCredential = {
       id: `${selectedEx.name.toLowerCase().replace(/\s+/g, '-')}-${Math.random().toString(36).substring(2, 8)}`,
@@ -649,7 +649,7 @@ export function ExchangeManager({ state, onUpdateSettings, coinPrices = {}, user
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-[10px] text-slate-500 uppercase font-bold mb-1 font-mono">
                   Exchange Passphrase <span className="text-gray-600">(OKX & specific platforms)</span>
@@ -659,17 +659,6 @@ export function ExchangeManager({ state, onUpdateSettings, coinPrices = {}, user
                   placeholder="Only if required by exchange"
                   value={passphrase}
                   onChange={(e) => setPassphrase(e.target.value)}
-                  className="w-full bg-[#070A13] border border-[#20293A] rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-orange-500 font-mono"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[10px] text-slate-500 uppercase font-bold mb-1 font-mono">Initial Mock/Verification Pool Balance (USDT)</label>
-                <input 
-                  type="number"
-                  placeholder="Total funding to sync"
-                  value={initialBalance}
-                  onChange={(e) => setInitialBalance(e.target.value)}
                   className="w-full bg-[#070A13] border border-[#20293A] rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-orange-500 font-mono"
                 />
               </div>

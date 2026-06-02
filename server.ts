@@ -10,7 +10,7 @@ import { fetchRealExchangeBalances } from './serverExchangeFetch';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 80;
+const PORT = 3000;
 
 app.use(express.json());
 
@@ -24,7 +24,10 @@ import {
   updateUserState,
   createDefaultState,
   runSimulationTick,
-  getNotificationLogsString
+  getNotificationLogsString,
+  ensureBalancesInitialized,
+  addFunds,
+  deductFunds
 } from './serverDB';
 
 import { getCachedPairs, runExchangePairsLiveSync } from './serverExchangePairs';
@@ -59,7 +62,7 @@ app.post('/api/exchange/sync', async (req, res) => {
   }
 
   try {
-    const result = await fetchRealExchangeBalances(cred);
+    const result = await fetchRealExchangeBalances(cred, state.accountMode);
 
     // Update credential properties
     cred.spotBalance = result.spotBalance;
@@ -320,6 +323,7 @@ app.post('/api/account-settings', (req, res) => {
   // Assign explicitly or merge key properties
   const keysToUpdate = [
     'accountMode', 'exchangeCredentials', 'balance', 'realBalance',
+    'spotBalance', 'futuresBalance', 'realSpotBalance', 'realFuturesBalance',
     'telegramEnabled', 'telegramBotToken', 'telegramChatId',
     'whatsappEnabled', 'whatsappPhone', 'smsEnabled', 'smsPhone',
     'tradingViewWebhooksEnabled'
@@ -329,6 +333,141 @@ app.post('/api/account-settings', (req, res) => {
     if (req.body[key] !== undefined) {
       (state as any)[key] = req.body[key];
     }
+  });
+
+  ensureBalancesInitialized(state);
+  updateUserState(username, state);
+  res.json({ success: true, state });
+});
+
+// FUND TRANSFER ROUTE (Spot <-> Futures)
+app.post('/api/account/transfer', (req, res) => {
+  const { username, state } = getUserStateFromHeader(req.headers.authorization);
+  const { fromAccount, toAccount, amount, exchangeId } = req.body;
+
+  if (!fromAccount || !toAccount || amount === undefined || amount <= 0) {
+    return res.status(400).json({ error: 'Invalid transfer details. Specify from, to, and positive amount.' });
+  }
+
+  ensureBalancesInitialized(state);
+  const mode = state.accountMode || 'real';
+
+  if (mode === 'real') {
+    const currentSrc = fromAccount === 'spot' ? (state.realSpotBalance || 0) : (state.realFuturesBalance || 0);
+    if (amount > currentSrc) {
+      return res.status(400).json({ error: `Insufficient real ${fromAccount} balance. Available: $${currentSrc.toFixed(2)}` });
+    }
+
+    if (fromAccount === 'spot') {
+      state.realSpotBalance = parseFloat(((state.realSpotBalance || 0) - amount).toFixed(2));
+      state.realFuturesBalance = parseFloat(((state.realFuturesBalance || 0) + amount).toFixed(2));
+    } else {
+      state.realFuturesBalance = parseFloat(((state.realFuturesBalance || 0) - amount).toFixed(2));
+      state.realSpotBalance = parseFloat(((state.realSpotBalance || 0) + amount).toFixed(2));
+    }
+    state.realBalance = parseFloat(((state.realSpotBalance || 0) + (state.realFuturesBalance || 0)).toFixed(2));
+
+    // Update first enabled credential if present
+    const credentials = state.exchangeCredentials || [];
+    let matchedKey = exchangeId ? credentials.find(c => c.id === exchangeId) : credentials.find(c => c.isEnabled);
+    if (matchedKey) {
+      if (matchedKey.spotBalance === undefined) matchedKey.spotBalance = 0;
+      if (matchedKey.futuresBalance === undefined) matchedKey.futuresBalance = 0;
+
+      if (fromAccount === 'spot') {
+        matchedKey.spotBalance = parseFloat((matchedKey.spotBalance - amount).toFixed(2));
+        matchedKey.futuresBalance = parseFloat((matchedKey.futuresBalance + amount).toFixed(2));
+      } else {
+        matchedKey.futuresBalance = parseFloat((matchedKey.futuresBalance - amount).toFixed(2));
+        matchedKey.spotBalance = parseFloat((matchedKey.spotBalance + amount).toFixed(2));
+      }
+      matchedKey.realBalance = parseFloat((matchedKey.spotBalance + matchedKey.futuresBalance).toFixed(2));
+      matchedKey.balance = matchedKey.realBalance;
+    }
+
+    state.logs.unshift({
+      id: 'log-transfer-' + Math.random().toString(36).substring(2, 9),
+      botId: 'direct-router',
+      botName: 'Wallet Controller',
+      timestamp: new Date().toISOString(),
+      pair: 'ALL',
+      action: 'wallet_transfer',
+      status: 'success',
+      message: `🔄 [EXCHANGE SECURE API] Successfully transferred ${amount.toFixed(2)} USDT from ${fromAccount.toUpperCase()} to ${toAccount.toUpperCase()} account securely.`
+    });
+
+  } else {
+    // Demo Mode transfer
+    const currentSrc = fromAccount === 'spot' ? (state.spotBalance || 0) : (state.futuresBalance || 0);
+    if (amount > currentSrc) {
+      return res.status(400).json({ error: `Insufficient demo ${fromAccount} balance. Available: $${currentSrc.toFixed(2)}` });
+    }
+
+    if (fromAccount === 'spot') {
+      state.spotBalance = parseFloat(((state.spotBalance || 0) - amount).toFixed(2));
+      state.futuresBalance = parseFloat(((state.futuresBalance || 0) + amount).toFixed(2));
+    } else {
+      state.futuresBalance = parseFloat(((state.futuresBalance || 0) - amount).toFixed(2));
+      state.spotBalance = parseFloat(((state.spotBalance || 0) + amount).toFixed(2));
+    }
+    state.balance = parseFloat(((state.spotBalance || 0) + (state.futuresBalance || 0)).toFixed(2));
+
+    state.logs.unshift({
+      id: 'log-transfer-' + Math.random().toString(36).substring(2, 9),
+      botId: 'direct-router',
+      botName: 'Wallet Controller',
+      timestamp: new Date().toISOString(),
+      pair: 'ALL',
+      action: 'wallet_transfer',
+      status: 'success',
+      message: `🔄 [DEMO ACC] Successfully transferred ${amount.toFixed(2)} USDT from ${fromAccount.toUpperCase()} to ${toAccount.toUpperCase()} account.`
+    });
+  }
+
+  updateUserState(username, state);
+  res.json({ success: true, state });
+});
+
+// FAUCET ROUTE
+app.post('/api/account/faucet', (req, res) => {
+  const { username, state } = getUserStateFromHeader(req.headers.authorization);
+  const { accountType, amount } = req.body;
+
+  if (!accountType || amount === undefined || amount <= 0) {
+    return res.status(400).json({ error: 'Invalid faucet parameters. Specify accountType and positive amount.' });
+  }
+
+  ensureBalancesInitialized(state);
+  const mode = state.accountMode || 'real';
+
+  addFunds(state, amount, accountType, mode);
+
+  // If real mode, sync credential
+  if (mode === 'real') {
+    const credentials = state.exchangeCredentials || [];
+    const matchedKey = credentials.find(c => c.isEnabled);
+    if (matchedKey) {
+      if (matchedKey.spotBalance === undefined) matchedKey.spotBalance = 0;
+      if (matchedKey.futuresBalance === undefined) matchedKey.futuresBalance = 0;
+      if (accountType === 'spot') {
+        matchedKey.spotBalance = parseFloat((matchedKey.spotBalance + amount).toFixed(2));
+      } else {
+        matchedKey.futuresBalance = parseFloat((matchedKey.futuresBalance + amount).toFixed(2));
+      }
+      matchedKey.realBalance = parseFloat((matchedKey.spotBalance + matchedKey.futuresBalance).toFixed(2));
+      matchedKey.balance = matchedKey.realBalance;
+    }
+  }
+
+  state.logs.unshift({
+    id: 'log-faucet-' + Math.random().toString(36).substring(2, 9),
+    botId: 'direct-router',
+    botName: 'Wallet Controller',
+    timestamp: new Date().toISOString(),
+    pair: 'ALL',
+    action: 'wallet_deposit',
+    status: 'success',
+    message: `💵 [FAUCET DEPOSIT] Successfully funded +${amount.toFixed(2)} USDT into ${accountType.toUpperCase()} ${mode.toUpperCase()} account.`
   });
 
   updateUserState(username, state);
@@ -374,15 +513,14 @@ app.delete('/api/bots/:id', (req, res) => {
   const { username, state } = getUserStateFromHeader(req.headers.authorization);
   const botId = req.params.id;
 
+  const bot = state.bots.find(b => b.id === botId);
+  const strategyType = bot ? bot.strategyType : 'futures';
+
   state.bots = state.bots.filter(b => b.id !== botId);
   state.activeDeals = state.activeDeals.filter(deal => {
     if (deal.botId === botId && deal.status === 'active') {
       const mode = state.accountMode || 'paper';
-      if (mode === 'real') {
-        state.realBalance = parseFloat(((state.realBalance || 50000) + deal.volume + deal.pnl).toFixed(2));
-      } else {
-        state.balance = parseFloat((state.balance + deal.volume + deal.pnl).toFixed(2));
-      }
+      addFunds(state, deal.volume + deal.pnl, strategyType, mode);
       return false;
     }
     return true;
@@ -471,11 +609,9 @@ app.post('/api/deals/:id/close', (req, res) => {
     deal.pnl = (deal.pnlPercent / 100) * deal.volume;
 
     const mode = state.accountMode || 'paper';
-    if (mode === 'real') {
-      state.realBalance = parseFloat(((state.realBalance || 50000) + deal.volume + deal.pnl).toFixed(2));
-    } else {
-      state.balance = parseFloat((state.balance + deal.volume + deal.pnl).toFixed(2));
-    }
+    const relatedBot = (state.bots || []).find(b => b.id === deal.botId) || (state.gridBots || []).find(b => b.id === deal.botId);
+    const strategyType = relatedBot ? relatedBot.strategyType : 'futures';
+    addFunds(state, deal.volume + deal.pnl, strategyType, mode);
 
     state.logs.unshift({
       id: 'log-close-' + Math.random().toString(36).substring(2, 9),
@@ -500,8 +636,8 @@ app.post('/api/deals/:id/close', (req, res) => {
 app.post('/api/reset', (req, res) => {
   const { username, state } = getUserStateFromHeader(req.headers.authorization);
 
-  state.balance = 10000;
-  state.realBalance = 50000;
+  state.balance = 0;
+  state.realBalance = 0;
   state.activeDeals = [];
   state.logs = [];
   state.bots = [];
@@ -663,7 +799,7 @@ app.post('/webhook/:userId/:botId', (req, res) => {
 
       const mode = state.accountMode || 'paper';
       if (mode === 'real') {
-        state.realBalance = parseFloat(((state.realBalance || 50000) + deal.volume + deal.pnl).toFixed(2));
+        state.realBalance = parseFloat(((state.realBalance || 0) + deal.volume + deal.pnl).toFixed(2));
       } else {
         state.balance = parseFloat((state.balance + deal.volume + deal.pnl).toFixed(2));
       }
@@ -786,7 +922,7 @@ app.post('/webhook/:userId/:botId', (req, res) => {
   const userMode = state.accountMode || 'paper';
 
   // 1. DIRECT API REAL BALANCE SYNCHRONIZATION BEFORE EXECUTING TRADE
-  let fetchedBalance = userMode === 'real' ? (state.realBalance || 50000) : state.balance;
+  let fetchedBalance = userMode === 'real' ? (state.realBalance || 0) : state.balance;
   let activeExDesc = "Paper Trading";
 
   if (userMode === 'real') {
@@ -865,7 +1001,7 @@ app.post('/webhook/:userId/:botId', (req, res) => {
       action: 'admin_balance_sync',
       payload: JSON.stringify({ balance: state.realBalance }),
       status: 'success',
-      message: `🔄 [ADMIN SYNC] Administrator Core routing pool balance verified before executing trade: $${(state.realBalance ?? 50000).toLocaleString()} USDT.`
+      message: `🔄 [ADMIN SYNC] Administrator Core routing pool balance verified before executing trade: ${(state.realBalance ?? 0).toLocaleString()} USDT.`
     });
   }
 
@@ -913,7 +1049,10 @@ app.post('/webhook/:userId/:botId', (req, res) => {
       }
     }
   } else {
-    if (tradeVolume > state.balance) {
+    ensureBalancesInitialized(state);
+    const strategyType = bot.strategyType || 'futures';
+    const available = strategyType === 'spot' ? (state.spotBalance || 0) : (state.futuresBalance || 0);
+    if (tradeVolume > available) {
       state.logs.unshift({
         id: 'log-demo-nsf-' + Math.random().toString(36).substring(2, 9),
         botId: bot.id,
@@ -923,14 +1062,17 @@ app.post('/webhook/:userId/:botId', (req, res) => {
         action: resolvedAction,
         payload: logPayloadStr,
         status: 'error',
-        message: `🚫 Order Execution Blocked: Insufficient Paper wallet balance (Required: $${tradeVolume.toFixed(2)}, Available: $${state.balance.toFixed(2)}).`
+        message: `🚫 Order Execution Blocked: Insufficient Paper ${strategyType.toUpperCase()} balance (Required: $${tradeVolume.toFixed(2)}, Available: $${available.toFixed(2)}).`
       });
       saveDB(db);
-      return res.status(400).json({ error: 'Insufficient Paper wallet balance' });
+      return res.status(400).json({ error: `Insufficient Paper ${strategyType} balance` });
     }
   }
 
+  const strategyType = bot.strategyType || 'futures';
   if (userMode === 'real') {
+    deductFunds(state, tradeVolume, strategyType, 'real');
+
     const credentials = state.exchangeCredentials || [];
     const botExchange = (bot.exchange || '').toLowerCase();
     const matchedKeys = credentials.filter(c => 
@@ -955,7 +1097,7 @@ app.post('/webhook/:userId/:botId', (req, res) => {
       state.realBalance = parseFloat(summedReal.toFixed(2));
     }
   } else {
-    state.balance = parseFloat((state.balance - tradeVolume).toFixed(2));
+    deductFunds(state, tradeVolume, strategyType, 'paper');
   }
 
   const lev = bot.strategyType === 'spot' ? 1 : (bot.leverage || 10);
@@ -1212,7 +1354,7 @@ app.post('/api/webhooks', (req, res) => {
 
       const mode = state.accountMode || 'paper';
       if (mode === 'real') {
-        state.realBalance = parseFloat(((state.realBalance || 50000) + deal.volume + deal.pnl).toFixed(2));
+        state.realBalance = parseFloat(((state.realBalance || 0) + deal.volume + deal.pnl).toFixed(2));
       } else {
         state.balance = parseFloat((state.balance + deal.volume + deal.pnl).toFixed(2));
       }
@@ -1226,7 +1368,7 @@ app.post('/api/webhooks', (req, res) => {
         action: resolvedAction,
         payload: logPayloadStr,
         status: 'success',
-        message: `🟢 Custom Webhook exit executed! Profit: $${deal.pnl >= 0 ? '+' : ''}${deal.pnl.toFixed(2)} (${deal.pnlPercent.toFixed(2)}%) at $${currentPrice}.${getNotificationLogsString(state)}`
+        message: `🟢 Custom Webhook exit executed! Profit: ${deal.pnl >= 0 ? '+' : ''}${deal.pnl.toFixed(2)} (${deal.pnlPercent.toFixed(2)}%) at ${currentPrice}.${getNotificationLogsString(state)}`
       });
 
       saveDB(db);
@@ -1333,7 +1475,7 @@ app.post('/api/webhooks', (req, res) => {
   const userMode = state.accountMode || 'paper';
 
   // 1. DIRECT API REAL BALANCE SYNCHRONIZATION BEFORE EXECUTING TRADE
-  let fetchedBalance = userMode === 'real' ? (state.realBalance || 50000) : state.balance;
+  let fetchedBalance = userMode === 'real' ? (state.realBalance || 0) : state.balance;
   let activeExDesc = "Paper Trading";
 
   if (userMode === 'real') {
@@ -1412,7 +1554,7 @@ app.post('/api/webhooks', (req, res) => {
       action: 'admin_balance_sync',
       payload: JSON.stringify({ balance: state.realBalance }),
       status: 'success',
-      message: `🔄 [ADMIN SYNC] Administrator Core routing pool balance verified before executing trade: $${(state.realBalance ?? 50000).toLocaleString()} USDT.`
+      message: `🔄 [ADMIN SYNC] Administrator Core routing pool balance verified before executing trade: ${(state.realBalance ?? 0).toLocaleString()} USDT.`
     });
   }
 
@@ -1487,7 +1629,7 @@ app.post('/api/webhooks', (req, res) => {
     }
   }
 
-  const maxBal = userMode === 'real' ? (state.realBalance || 50000) : state.balance;
+  const maxBal = userMode === 'real' ? (state.realBalance || 0) : state.balance;
   if (maxBal < tradeVolume) {
     state.logs.unshift({
       id: 'log-funds-' + Math.random().toString(36).substring(2, 9),
@@ -1498,14 +1640,14 @@ app.post('/api/webhooks', (req, res) => {
       action: resolvedAction,
       payload: logPayloadStr,
       status: 'error',
-      message: `🚨 ORDER REJECTED: Insufficient balance. Required: $${tradeVolume.toFixed(2)}, Available: $${maxBal.toFixed(2)}.`
+      message: `🚨 ORDER REJECTED: Insufficient balance. Required: ${tradeVolume.toFixed(2)}, Available: ${maxBal.toFixed(2)}.`
     });
     saveDB(db);
     return res.status(400).json({ error: 'Insufficient funds' });
   }
 
   if (userMode === 'real') {
-    state.realBalance = parseFloat(((state.realBalance || 50000) - tradeVolume).toFixed(2));
+    state.realBalance = parseFloat(((state.realBalance || 0) - tradeVolume).toFixed(2));
   } else {
     state.balance = parseFloat((state.balance - tradeVolume).toFixed(2));
   }

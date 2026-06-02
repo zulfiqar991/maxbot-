@@ -1,12 +1,14 @@
 {
   "users": {
-    "demo": {
-      "username": "demo",
-      "password": "demo",
+    "administrator": {
+      "username": "Administrator",
+      "email": "admin@maxbot.io",
+      "phone": "+123456789",
+      "password": "admin",
       "state": {
         "balance": 12030.03,
-        "realBalance": 12501.23,
-        "accountMode": "paper",
+        "realBalance": 12501.48,
+        "accountMode": "real",
         "exchangeCredentials": [
           {
             "id": "cred-1",
@@ -16,11 +18,11 @@
             "isEnabled": true,
             "createdAt": "2026-05-23T03:36:51.447Z",
             "withdrawalDisabled": true,
-            "balance": 12501.23,
-            "spotBalance": 5001.13,
-            "futuresBalance": 7500.1,
-            "realBalance": 12501.23,
-            "remainingBalance": 12501.23,
+            "balance": 12501.48,
+            "spotBalance": 5000.55,
+            "futuresBalance": 7500.93,
+            "realBalance": 12501.48,
+            "remainingBalance": 12501.48,
             "protocol": "REST+WS",
             "authMethod": "Sha256_Signature",
             "wsStatus": "Connected",
@@ -1133,9 +1135,7 @@
           }
         ]
       },
-      "isAdmin": true,
-      "email": "demo@example.com",
-      "phone": "+15550199"
+      "isAdmin": true
     }
   },
   "auditLogs": [],

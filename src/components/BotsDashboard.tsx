@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Play, Pause, Trash2, Edit2, Code, Terminal, Plus, Shield, ShieldAlert, Award, Grid, Sliders, ChevronDown, RefreshCw, Layers, Sparkles, TrendingUp, Search, Filter, X, Check } from 'lucide-react';
+import { Play, Pause, Trash2, Edit2, Code, Terminal, Plus, Shield, ShieldAlert, Award, Grid, Sliders, ChevronDown, RefreshCw, Layers, Sparkles, TrendingUp, Search, Filter, X, Check, Zap } from 'lucide-react';
 import { SignalBot, GridBot, Deal, ExchangeCredential, AccountState } from '../types';
 import { WebhookBotCard } from './WebhookBotCard';
 
@@ -221,27 +221,70 @@ if (sellSignal)
   return (
     <div className="space-y-6">
 
-      {/* Dynamic Account Mode Toggle Banner */}
-      <div className="bg-gradient-to-r from-[#111827] to-[#0D1525] border border-[#1E293B] rounded-2xl p-5 shadow-lg relative overflow-hidden">
-        <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-gradient-to-l from-emerald-500/5 to-transparent pointer-events-none" />
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-1 md:max-w-xl">
-            <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 text-[10px] uppercase font-mono px-2 py-0.5 rounded font-extrabold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 animate-pulse">
-                <Shield className="w-3 h-3 text-emerald-400" />
-                Administrator Account Mode Active
+      {/* Environment Control & Routing policy Hub */}
+      <div className="bg-gradient-to-r from-[#111827] to-[#0D1525] border border-[#1E293B] rounded-2xl p-5 shadow-lg relative overflow-hidden" id="environment_control_hub">
+        <div className={`absolute right-0 top-0 bottom-0 w-1/3 bg-gradient-to-l pointer-events-none transition-all duration-300 ${
+          accountMode === 'real' ? 'from-emerald-500/5' : 'from-amber-500/5'
+        }`} />
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div className="space-y-2 max-w-2xl">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className={`inline-flex items-center gap-1.5 text-[10px] uppercase font-mono px-2 py-0.5 rounded font-extrabold border bg-opacity-10 transition-all ${
+                accountMode === 'real'
+                  ? 'bg-emerald-500 text-emerald-400 border-emerald-500/20'
+                  : 'bg-amber-500 text-amber-400 border-amber-500/20'
+              }`}>
+                <Shield className="w-3 h-3" />
+                {accountMode === 'real' ? 'Running in Real Account' : 'Running in Demo Mode'}
               </span>
-              <span className="text-[10px] text-gray-400 font-mono">Max Bot 2026 Core Gateway</span>
+              <span className="text-[10px] text-gray-400 font-mono">Max Bot Core Gateway</span>
             </div>
             <h3 className="text-base font-bold text-white tracking-tight">Enterprise Multi-API Router Pipeline</h3>
-            <p className="text-xs text-gray-400 leading-relaxed">
-              Operating under sovereign administrative security guidelines. Unrestricted access to multi-channel execution pipelines, real-time WebSocket stream logs, and live key portfolios. Sandbox and Paper Trading simulation arrays are bypassed.
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Manually shift between **Production Execution Mode** (Direct connection to official exchange APIs, utilizing real assets, orders and real-time ledger records) and **Demo Sandbox Mode** (Paper trading, simulated routing endpoints and isolated environment safety nets).
             </p>
+            <div className="pt-1 flex items-center gap-2">
+              <div className={`w-2 h-2 rounded-full ${accountMode === 'real' ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+              <p className="text-[11px] font-mono font-medium text-slate-400">
+                {accountMode === 'real' ? (
+                  <span className="text-emerald-400">
+                    🟢 CONNECTED TO REAL PRODUCTION: Spot (https://api.binance.com), Futures (https://fapi.binance.com), Margin (https://api.binance.com/sapi)
+                  </span>
+                ) : (
+                  <span className="text-amber-400">
+                    🟡 ROUTED TO DEMO SANDBOX: Spot (https://testnet.binance.vision), Futures (https://fapi.binancefuture.com)
+                  </span>
+                )}
+              </p>
+            </div>
           </div>
 
-          <div className="bg-slate-950/80 border border-emerald-500/25 rounded-xl p-3 px-4 flex items-center gap-3 self-start md:self-center shrink-0">
-            <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-ping" />
-            <span className="text-xs font-bold font-mono text-emerald-400 uppercase tracking-wider">LIVE LINK CONFIRMED</span>
+          {/* Interactive Toggle Buttons */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0 self-start lg:self-center bg-slate-950/65 p-1.5 border border-[#1E293B] rounded-xl">
+            <button
+              onClick={() => onUpdateSettings && onUpdateSettings({ accountMode: 'paper' })}
+              className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer active:scale-95 ${
+                accountMode === 'paper'
+                  ? 'bg-gradient-to-r from-amber-500/20 to-yellow-500/10 text-amber-400 border border-amber-500/25 shadow-md shadow-amber-500/5'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/50 border border-transparent'
+              }`}
+              title="Switch to Demo / Paper Mode (Sandbox and Testnet endpoints)"
+            >
+              <Sliders className="w-3.5 h-3.5" />
+              <span>Demo Mode</span>
+            </button>
+            <button
+              onClick={() => onUpdateSettings && onUpdateSettings({ accountMode: 'real' })}
+              className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer active:scale-95 ${
+                accountMode === 'real'
+                  ? 'bg-gradient-to-r from-emerald-500/20 to-teal-500/10 text-emerald-400 border border-emerald-500/25 shadow-md shadow-emerald-500/5'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/50 border border-transparent'
+              }`}
+              title="Switch to Real Mode (Live Account production endpoints)"
+            >
+              <Zap className="w-3.5 h-3.5" />
+              <span>Real Mode</span>
+            </button>
           </div>
         </div>
       </div>

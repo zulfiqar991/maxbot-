@@ -99,24 +99,79 @@ export function normalizePair(pairStr: string): string {
 }
 
 export const createDefaultState = (username: string): AccountState => ({
-  balance: 10000,
-  realBalance: 50000,
+  balance: 0,
+  realBalance: 0,
+  spotBalance: 0,
+  futuresBalance: 0,
+  realSpotBalance: 0,
+  realFuturesBalance: 0,
   accountMode: 'real',
-  exchangeCredentials: [
-    {
-      id: 'cred-1',
-      name: 'Binance API (Max Bot Link)',
-      apiKey: 'bin_api_live_max_920a816bc8d2d4f',
-      apiSecret: 'bin_secret_************************',
-      isEnabled: true,
-      createdAt: new Date().toISOString()
-    }
-  ],
+  exchangeCredentials: [],
   activeDeals: [],
   bots: [],
   gridBots: [],
   logs: []
 });
+
+export function ensureBalancesInitialized(state: AccountState) {
+  if (state.spotBalance === undefined || state.spotBalance === null) {
+    state.spotBalance = parseFloat(((state.balance || 0) * 0.50).toFixed(2));
+  }
+  if (state.futuresBalance === undefined || state.futuresBalance === null) {
+    state.futuresBalance = parseFloat(((state.balance || 0) * 0.50).toFixed(2));
+  }
+  // Ensure sum equals state.balance
+  state.balance = parseFloat(((state.spotBalance || 0) + (state.futuresBalance || 0)).toFixed(2));
+
+  if (state.realSpotBalance === undefined || state.realSpotBalance === null) {
+    state.realSpotBalance = parseFloat(((state.realBalance || 0) * 0.50).toFixed(2));
+  }
+  if (state.realFuturesBalance === undefined || state.realFuturesBalance === null) {
+    state.realFuturesBalance = parseFloat(((state.realBalance || 0) * 0.50).toFixed(2));
+  }
+  // Ensure sum equals state.realBalance
+  state.realBalance = parseFloat(((state.realSpotBalance || 0) + (state.realFuturesBalance || 0)).toFixed(2));
+}
+
+export function addFunds(state: AccountState, amount: number, strategyType: 'spot' | 'futures', userMode: 'real' | 'paper' | 'real_fallback') {
+  ensureBalancesInitialized(state);
+  const isReal = userMode === 'real' || userMode === 'real_fallback';
+  if (isReal) {
+    if (strategyType === 'spot') {
+      state.realSpotBalance = parseFloat(((state.realSpotBalance || 0) + amount).toFixed(2));
+    } else {
+      state.realFuturesBalance = parseFloat(((state.realFuturesBalance || 0) + amount).toFixed(2));
+    }
+    state.realBalance = parseFloat(((state.realSpotBalance || 0) + (state.realFuturesBalance || 0)).toFixed(2));
+  } else {
+    if (strategyType === 'spot') {
+      state.spotBalance = parseFloat(((state.spotBalance || 0) + amount).toFixed(2));
+    } else {
+      state.futuresBalance = parseFloat(((state.futuresBalance || 0) + amount).toFixed(2));
+    }
+    state.balance = parseFloat(((state.spotBalance || 0) + (state.futuresBalance || 0)).toFixed(2));
+  }
+}
+
+export function deductFunds(state: AccountState, amount: number, strategyType: 'spot' | 'futures', userMode: 'real' | 'paper' | 'real_fallback') {
+  ensureBalancesInitialized(state);
+  const isReal = userMode === 'real' || userMode === 'real_fallback';
+  if (isReal) {
+    if (strategyType === 'spot') {
+      state.realSpotBalance = parseFloat((Math.max(0, (state.realSpotBalance || 0) - amount)).toFixed(2));
+    } else {
+      state.realFuturesBalance = parseFloat((Math.max(0, (state.realFuturesBalance || 0) - amount)).toFixed(2));
+    }
+    state.realBalance = parseFloat(((state.realSpotBalance || 0) + (state.realFuturesBalance || 0)).toFixed(2));
+  } else {
+    if (strategyType === 'spot') {
+      state.spotBalance = parseFloat((Math.max(0, (state.spotBalance || 0) - amount)).toFixed(2));
+    } else {
+      state.futuresBalance = parseFloat((Math.max(0, (state.futuresBalance || 0) - amount)).toFixed(2));
+    }
+    state.balance = parseFloat(((state.spotBalance || 0) + (state.futuresBalance || 0)).toFixed(2));
+  }
+}
 
 export function loadDB(): DBStructure {
   let db: any = null;
@@ -156,7 +211,9 @@ export function loadDB(): DBStructure {
     if (!db.users["administrator"].state) {
       db.users["administrator"].state = createDefaultState("Administrator");
     }
-    db.users["administrator"].state.accountMode = 'real';
+    if (!db.users["administrator"].state.accountMode) {
+      db.users["administrator"].state.accountMode = 'real';
+    }
   }
 
   // Auto-migrate old 'demo' user if it exists in historical databases
@@ -166,7 +223,9 @@ export function loadDB(): DBStructure {
       ...db.users["administrator"].state,
       ...demoNode.state
     };
-    db.users["administrator"].state.accountMode = 'real';
+    if (!db.users["administrator"].state.accountMode) {
+      db.users["administrator"].state.accountMode = 'real';
+    }
     delete db.users["demo"];
   }
 
@@ -224,9 +283,12 @@ export function getUserStateFromHeader(authorizationHeader: string | undefined):
   }
   const userNode = db.users[username.toLowerCase()] || db.users["administrator"];
   
-  // Force Real Trading Mode for the dashboard metrics
+  // Force Real Trading Mode as default but allow user setting persistence
   if (userNode && userNode.state) {
-    userNode.state.accountMode = 'real';
+    if (!userNode.state.accountMode) {
+      userNode.state.accountMode = 'real';
+    }
+    ensureBalancesInitialized(userNode.state);
   }
 
   return {
@@ -343,7 +405,7 @@ export function runSimulationTick() {
             const currentTick = (global as any)[tickKey] || 0;
             (global as any)[tickKey] = (currentTick + 1) % 4; // Fetch real API once every 16 seconds
             if (currentTick === 0) {
-              fetchRealExchangeBalances(cred)
+              fetchRealExchangeBalances(cred, state.accountMode)
                 .then(res => {
                   cred.spotBalance = res.spotBalance;
                   cred.futuresBalance = res.futuresBalance;
@@ -451,16 +513,29 @@ export function runSimulationTick() {
             const currentSoVolume = soSize * Math.pow(volScale, nextSoIndex - 1);
 
             let hasFunds = false;
+            const strategyType = (relatedBot ? relatedBot.strategyType : 'futures') || 'futures';
             if (userMode === 'real') {
-              const currentBalance = state.realBalance || 0;
+              ensureBalancesInitialized(state);
+              const currentBalance = strategyType === 'spot' ? (state.realSpotBalance || 0) : (state.realFuturesBalance || 0);
               if (currentBalance >= currentSoVolume) {
-                state.realBalance = parseFloat((currentBalance - currentSoVolume).toFixed(2));
+                if (strategyType === 'spot') {
+                  state.realSpotBalance = parseFloat((currentBalance - currentSoVolume).toFixed(2));
+                } else {
+                  state.realFuturesBalance = parseFloat((currentBalance - currentSoVolume).toFixed(2));
+                }
+                state.realBalance = parseFloat(((state.realSpotBalance || 0) + (state.realFuturesBalance || 0)).toFixed(2));
                 hasFunds = true;
               }
             } else {
-              const currentBalance = state.balance || 0;
+              ensureBalancesInitialized(state);
+              const currentBalance = strategyType === 'spot' ? (state.spotBalance || 0) : (state.futuresBalance || 0);
               if (currentBalance >= currentSoVolume) {
-                state.balance = parseFloat((currentBalance - currentSoVolume).toFixed(2));
+                if (strategyType === 'spot') {
+                  state.spotBalance = parseFloat((currentBalance - currentSoVolume).toFixed(2));
+                } else {
+                  state.futuresBalance = parseFloat((currentBalance - currentSoVolume).toFixed(2));
+                }
+                state.balance = parseFloat(((state.spotBalance || 0) + (state.futuresBalance || 0)).toFixed(2));
                 hasFunds = true;
               }
             }
@@ -649,11 +724,7 @@ export function runSimulationTick() {
           deal.exitPrice = currentPrice;
 
           const closedVol = deal.volume;
-          if (userMode === 'real') {
-            state.realBalance = parseFloat((Math.max(0, (state.realBalance || 50000) - closedVol)).toFixed(2));
-          } else {
-            state.balance = parseFloat((Math.max(0, state.balance - closedVol)).toFixed(2));
-          }
+          deductFunds(state, closedVol, 'futures', userMode);
 
           state.logs.unshift({
             id: 'log-liq-' + Math.random().toString(36).substring(2, 9),
@@ -685,11 +756,8 @@ export function runSimulationTick() {
               const ratioAtExit = (currentPrice - deal.entryPrice) / deal.entryPrice;
               const finalPnl = deal.volume * ratioAtExit * deal.leverage;
 
-              if (userMode === 'real') {
-                state.realBalance = parseFloat(((state.realBalance || 50000) + deal.volume + finalPnl).toFixed(2));
-              } else {
-                state.balance = parseFloat((state.balance + deal.volume + finalPnl).toFixed(2));
-              }
+              const strategyType = (relatedBot ? relatedBot.strategyType : 'futures') || 'futures';
+              addFunds(state, deal.volume + finalPnl, strategyType, userMode);
 
               state.logs.unshift({
                 id: 'log-tp-' + Math.random().toString(36).substring(2, 9),
@@ -718,11 +786,8 @@ export function runSimulationTick() {
               const ratioAtExit = -(currentPrice - deal.entryPrice) / deal.entryPrice;
               const finalPnl = deal.volume * ratioAtExit * deal.leverage;
 
-              if (userMode === 'real') {
-                state.realBalance = parseFloat(((state.realBalance || 50000) + deal.volume + finalPnl).toFixed(2));
-              } else {
-                state.balance = parseFloat((state.balance + deal.volume + finalPnl).toFixed(2));
-              }
+              const strategyType = (relatedBot ? relatedBot.strategyType : 'futures') || 'futures';
+              addFunds(state, deal.volume + finalPnl, strategyType, userMode);
 
               state.logs.unshift({
                 id: 'log-tp-' + Math.random().toString(36).substring(2, 9),
@@ -783,11 +848,8 @@ export function runSimulationTick() {
                 deal.volume = parseFloat((deal.volume - portionVolume).toFixed(4));
                 deal.amountAsset = parseFloat((deal.volume * deal.leverage / deal.entryPrice).toFixed(6));
 
-                if (userMode === 'real') {
-                  state.realBalance = parseFloat(((state.realBalance || 50000) + portionVolume + portionPnl).toFixed(2));
-                } else {
-                  state.balance = parseFloat((state.balance + portionVolume + portionPnl).toFixed(2));
-                }
+                const strategyType = (relatedBot ? relatedBot.strategyType : 'futures') || 'futures';
+                addFunds(state, portionVolume + portionPnl, strategyType, userMode);
 
                 state.logs.unshift({
                   id: 'log-tp-partial-' + Math.random().toString(36).substring(2, 9),
@@ -826,11 +888,8 @@ export function runSimulationTick() {
                 deal.volume = parseFloat((deal.volume - portionVolume).toFixed(4));
                 deal.amountAsset = parseFloat((deal.volume * deal.leverage / deal.entryPrice).toFixed(6));
 
-                if (userMode === 'real') {
-                  state.realBalance = parseFloat(((state.realBalance || 50000) + portionVolume + portionPnl).toFixed(2));
-                } else {
-                  state.balance = parseFloat((state.balance + portionVolume + portionPnl).toFixed(2));
-                }
+                const strategyType = (relatedBot ? relatedBot.strategyType : 'futures') || 'futures';
+                addFunds(state, portionVolume + portionPnl, strategyType, userMode);
 
                 state.logs.unshift({
                   id: 'log-tp-partial-' + Math.random().toString(36).substring(2, 9),
@@ -891,11 +950,8 @@ export function runSimulationTick() {
                 deal.volume = parseFloat((deal.volume - portionVolume).toFixed(4));
                 deal.amountAsset = parseFloat((deal.volume * deal.leverage / deal.entryPrice).toFixed(6));
 
-                if (userMode === 'real') {
-                  state.realBalance = parseFloat(((state.realBalance || 50000) + portionVolume + portionPnl).toFixed(2));
-                } else {
-                  state.balance = parseFloat((state.balance + portionVolume + portionPnl).toFixed(2));
-                }
+                const strategyType = (relatedBot ? relatedBot.strategyType : 'futures') || 'futures';
+                addFunds(state, portionVolume + portionPnl, strategyType, userMode);
 
                 state.logs.unshift({
                   id: 'log-tp-partial-' + Math.random().toString(36).substring(2, 9),
@@ -934,11 +990,8 @@ export function runSimulationTick() {
                 deal.volume = parseFloat((deal.volume - portionVolume).toFixed(4));
                 deal.amountAsset = parseFloat((deal.volume * deal.leverage / deal.entryPrice).toFixed(6));
 
-                if (userMode === 'real') {
-                  state.realBalance = parseFloat(((state.realBalance || 50000) + portionVolume + portionPnl).toFixed(2));
-                } else {
-                  state.balance = parseFloat((state.balance + portionVolume + portionPnl).toFixed(2));
-                }
+                const strategyType = (relatedBot ? relatedBot.strategyType : 'futures') || 'futures';
+                addFunds(state, portionVolume + portionPnl, strategyType, userMode);
 
                 state.logs.unshift({
                   id: 'log-tp-partial-' + Math.random().toString(36).substring(2, 9),
@@ -1063,11 +1116,8 @@ export function runSimulationTick() {
           deal.exitPrice = currentPrice;
           const closedPnl = deal.volume * (deal.type === 'long' ? diffRatio : -diffRatio) * deal.leverage;
 
-          if (userMode === 'real') {
-            state.realBalance = parseFloat(((state.realBalance || 50000) + deal.volume + closedPnl).toFixed(2));
-          } else {
-            state.balance = parseFloat((state.balance + deal.volume + closedPnl).toFixed(2));
-          }
+          const strategyType = (relatedBot ? relatedBot.strategyType : 'futures') || 'futures';
+          addFunds(state, deal.volume + closedPnl, strategyType, userMode);
 
           state.logs.unshift({
             id: 'log-tp-' + Math.random().toString(36).substring(2, 9),
@@ -1085,11 +1135,8 @@ export function runSimulationTick() {
           deal.exitPrice = currentPrice;
           const closedPnl = deal.volume * (deal.type === 'long' ? diffRatio : -diffRatio) * deal.leverage;
 
-          if (userMode === 'real') {
-            state.realBalance = parseFloat(((state.realBalance || 50000) + deal.volume + closedPnl).toFixed(2));
-          } else {
-            state.balance = parseFloat((state.balance + deal.volume + closedPnl).toFixed(2));
-          }
+          const strategyType = (relatedBot ? relatedBot.strategyType : 'futures') || 'futures';
+          addFunds(state, deal.volume + closedPnl, strategyType, userMode);
 
           state.logs.unshift({
             id: 'log-sl-' + Math.random().toString(36).substring(2, 9),
@@ -1132,7 +1179,7 @@ export function runSimulationTick() {
             grid.gridProfit = parseFloat((grid.gridProfit + microAmount).toFixed(2));
             const userMode = state.accountMode || 'paper';
             if (userMode === 'real') {
-              state.realBalance = parseFloat(((state.realBalance || 50000) + microAmount).toFixed(2));
+              state.realBalance = parseFloat(((state.realBalance || 0) + microAmount).toFixed(2));
             } else {
               state.balance = parseFloat((state.balance + microAmount).toFixed(2));
             }

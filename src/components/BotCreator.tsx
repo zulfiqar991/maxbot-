@@ -844,11 +844,11 @@ export function BotCreator({ onSave, onSaveGrid, isSaving, onCancel, botToEdit, 
                       <div className="relative">
                         <input
                           type="number"
-                          step="0.1"
-                          min="0.1"
+                          step="0.001"
+                          min="0.001"
                           value={takeProfitValue}
                           onChange={(e) => {
-                            setTakeProfitValue(Math.max(0.1, parseFloat(e.target.value) || 1.0));
+                            setTakeProfitValue(Math.max(0.001, parseFloat(e.target.value) || 1.0));
                             setTakeProfitType('percent');
                           }}
                           className="w-full bg-[#0F141F] border border-slate-800 focus:border-[#FF5A00] rounded-xl pl-3 pr-8 py-2.5 text-xs text-white focus:outline-none font-mono font-bold"
@@ -863,11 +863,11 @@ export function BotCreator({ onSave, onSaveGrid, isSaving, onCancel, botToEdit, 
                       <div className="relative">
                         <input
                           type="number"
-                          step="0.1"
-                          min="0.1"
+                          step="0.001"
+                          min="0.001"
                           value={stopLossValue}
                           onChange={(e) => {
-                            setStopLossValue(Math.max(0.1, parseFloat(e.target.value) || 1.5));
+                            setStopLossValue(Math.max(0.001, parseFloat(e.target.value) || 1.5));
                             setStopLossType('percent');
                           }}
                           className="w-full bg-[#0F141F] border border-slate-800 focus:border-[#FF5A00] rounded-xl pl-3 pr-8 py-2.5 text-xs text-white focus:outline-none font-mono font-bold"
@@ -1209,10 +1209,10 @@ export function BotCreator({ onSave, onSaveGrid, isSaving, onCancel, botToEdit, 
                             <div className="relative">
                               <input
                                 type="number"
-                                step="0.1"
-                                min="0.1"
+                                step="0.001"
+                                min="0.001"
                                 value={takeProfitValue}
-                                onChange={(e) => setTakeProfitValue(Math.max(0.1, parseFloat(e.target.value) || 0))}
+                                onChange={(e) => setTakeProfitValue(Math.max(0.001, parseFloat(e.target.value) || 0))}
                                 className="w-full bg-[#0B0F17] border border-[#2D3748] rounded-xl px-4 py-2 text-sm font-semibold text-white focus:outline-none"
                               />
                               <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-mono font-bold">%</span>
@@ -1276,10 +1276,10 @@ export function BotCreator({ onSave, onSaveGrid, isSaving, onCancel, botToEdit, 
                                 <div className="relative">
                                   <input
                                     type="number"
-                                    step="0.1"
-                                    min="0.1"
+                                    step="0.001"
+                                    min="0.001"
                                     value={tp1Value}
-                                    onChange={(e) => setTp1Value(Math.max(0.1, parseFloat(e.target.value) || 0))}
+                                    onChange={(e) => setTp1Value(Math.max(0.001, parseFloat(e.target.value) || 0))}
                                     className="w-full bg-[#070a13] border border-gray-800 rounded-lg px-2.5 py-1.5 text-xs font-mono font-bold text-white focus:outline-none"
                                   />
                                   <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-500 font-mono font-bold">%</span>
@@ -1308,10 +1308,10 @@ export function BotCreator({ onSave, onSaveGrid, isSaving, onCancel, botToEdit, 
                                 <div className="relative">
                                   <input
                                     type="number"
-                                    step="0.1"
-                                    min="0.1"
+                                    step="0.001"
+                                    min="0.001"
                                     value={tp2Value}
-                                    onChange={(e) => setTp2Value(Math.max(0.1, parseFloat(e.target.value) || 0))}
+                                    onChange={(e) => setTp2Value(Math.max(0.001, parseFloat(e.target.value) || 0))}
                                     className="w-full bg-[#070a13] border border-gray-800 rounded-lg px-2.5 py-1.5 text-xs font-mono font-bold text-white focus:outline-none"
                                   />
                                   <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-500 font-mono font-bold">%</span>
@@ -1340,10 +1340,10 @@ export function BotCreator({ onSave, onSaveGrid, isSaving, onCancel, botToEdit, 
                                 <div className="relative">
                                   <input
                                     type="number"
-                                    step="0.1"
-                                    min="0.1"
+                                    step="0.001"
+                                    min="0.001"
                                     value={tp3Value}
-                                    onChange={(e) => setTp3Value(Math.max(0.1, parseFloat(e.target.value) || 0))}
+                                    onChange={(e) => setTp3Value(Math.max(0.001, parseFloat(e.target.value) || 0))}
                                     className="w-full bg-[#070a13] border border-gray-800 rounded-lg px-2.5 py-1.5 text-xs font-mono font-bold text-white focus:outline-none"
                                   />
                                   <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-500 font-mono font-bold">%</span>
@@ -1450,10 +1450,10 @@ export function BotCreator({ onSave, onSaveGrid, isSaving, onCancel, botToEdit, 
                           <div className="relative">
                             <input
                               type="number"
-                              step="0.1"
-                              min="0.1"
+                              step="0.001"
+                              min="0.001"
                               value={stopLossValue}
-                              onChange={(e) => setStopLossValue(Math.max(0.1, parseFloat(e.target.value) || 0))}
+                              onChange={(e) => setStopLossValue(Math.max(0.001, parseFloat(e.target.value) || 0))}
                               className="w-full bg-[#0B0F17] border border-[#2D3748] rounded-xl px-4 py-2 text-sm font-semibold text-white focus:outline-none"
                             />
                             <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-mono font-bold">%</span>
@@ -1569,6 +1569,20 @@ export function BotCreator({ onSave, onSaveGrid, isSaving, onCancel, botToEdit, 
                       </div>
                       
                       <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTakeProfitValue(0.001);
+                            setTakeProfitType('percent');
+                            setStopLossValue(0.001);
+                            setStopLossType('percent');
+                            setTrailingTakeProfit(false);
+                          }}
+                          className="px-3.5 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/25 text-rose-400 text-xs font-bold rounded-lg transition-all cursor-pointer font-mono"
+                        >
+                          🔥 HFT Micro (0.001% / 0.001%)
+                        </button>
+
                         <button
                           type="button"
                           onClick={() => {

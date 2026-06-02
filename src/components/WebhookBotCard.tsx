@@ -185,7 +185,7 @@ export function WebhookBotCard({
             <div>
               <span className="text-gray-400 font-medium text-[11px] block uppercase tracking-wider">Take Profit:</span>
               <span className={`font-mono font-bold text-sm block mt-1 ${bot.takeProfitValue > 0 ? 'text-emerald-400' : 'text-gray-500'}`}>
-                {bot.takeProfitValue > 0 ? `+${bot.takeProfitValue.toFixed(2)}%` : 'OFF'}
+                {bot.takeProfitValue > 0 ? `+${bot.takeProfitValue < 0.1 ? bot.takeProfitValue.toString() : bot.takeProfitValue.toFixed(2)}%` : 'OFF'}
               </span>
             </div>
 
@@ -201,7 +201,7 @@ export function WebhookBotCard({
             <div className="col-span-2 border-t border-slate-800/50 pt-3">
               <div className="text-[12px] text-rose-500 font-bold flex items-center gap-1.5">
                 <span className="text-sm">🔴</span>
-                <span>Target Stop-Loss Limit: -{bot.stopLossValue > 0 ? bot.stopLossValue.toFixed(1) : '0.4'}%</span>
+                <span>Target Stop-Loss Limit: -{bot.stopLossValue > 0 ? (bot.stopLossValue < 0.1 ? bot.stopLossValue.toString() : bot.stopLossValue.toFixed(1)) : '0.4'}%</span>
               </div>
             </div>
 

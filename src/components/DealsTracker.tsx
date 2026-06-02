@@ -335,7 +335,7 @@ export function DealsTracker({ deals, onCloseDeal, isClosing, accountMode }: Dea
                                         ${deal.takeProfitPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                         {deal.takeProfitPercent !== undefined && (
                                           <span className="text-emerald-500 font-bold ml-1">
-                                            ({calcMode === 'price' ? `${deal.takeProfitPercent.toFixed(2)}%` : `${(deal.takeProfitPercent * deal.leverage).toFixed(1)}%`})
+                                            ({calcMode === 'price' ? `${deal.takeProfitPercent < 0.1 ? deal.takeProfitPercent : deal.takeProfitPercent.toFixed(2)}%` : `${(deal.takeProfitPercent * deal.leverage) < 0.1 ? (deal.takeProfitPercent * deal.leverage) : (deal.takeProfitPercent * deal.leverage).toFixed(1)}%`})
                                           </span>
                                         )}
                                       </span>
@@ -350,7 +350,7 @@ export function DealsTracker({ deals, onCloseDeal, isClosing, accountMode }: Dea
                                         ${deal.stopLossPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                         {deal.stopLossPercent !== undefined && (
                                           <span className="text-rose-500 font-bold ml-1">
-                                            ({calcMode === 'price' ? `${deal.stopLossPercent.toFixed(2)}%` : `${(deal.stopLossPercent * deal.leverage).toFixed(1)}%`})
+                                            ({calcMode === 'price' ? `${deal.stopLossPercent < 0.1 ? deal.stopLossPercent : deal.stopLossPercent.toFixed(2)}%` : `${(deal.stopLossPercent * deal.leverage) < 0.1 ? (deal.stopLossPercent * deal.leverage) : (deal.stopLossPercent * deal.leverage).toFixed(1)}%`})
                                           </span>
                                         )}
                                       </span>

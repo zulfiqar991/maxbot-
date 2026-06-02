@@ -11,7 +11,7 @@ interface HeaderProps {
 }
 
 export function Header({ state, onReset, isResetting, currentUser, onUpdateSettings }: HeaderProps) {
-  const accountMode = 'real';
+  const accountMode = state.accountMode || 'real';
   // Filter active deals by selected mode (real or paper)
   const filteredDealsByMode = (state.activeDeals || []).filter(
     d => ((d as any).accountMode || 'real') === accountMode
@@ -29,8 +29,15 @@ export function Header({ state, onReset, isResetting, currentUser, onUpdateSetti
     .filter(d => d.status !== 'active')
     .reduce((sum, d) => sum + d.pnl, 0);
 
-  const modeBalance = state.realBalance ?? 50000;
+  const modeBalance = accountMode === 'real' ? (state.realBalance ?? 50000) : (state.balance ?? 10000);
   const netAssetValue = modeBalance + totalPnl;
+
+  const handleToggleModeHeader = async () => {
+    if (onUpdateSettings) {
+      const nextMode = accountMode === 'real' ? 'paper' : 'real';
+      await onUpdateSettings({ accountMode: nextMode });
+    }
+  };
 
   return (
     <header className="border-b border-[#1E293B] bg-[#0B0F19] sticky top-0 z-50">
@@ -58,16 +65,42 @@ export function Header({ state, onReset, isResetting, currentUser, onUpdateSetti
             
             <div
               id="header_toggle_mode_btn"
-              className="flex flex-col min-w-[145px] text-left rounded-lg p-1.5 border bg-emerald-500/10 border-emerald-500/25 select-none"
-              title="Administrator Account Mode: Connected directly to Exchange Core APIs"
+              onClick={handleToggleModeHeader}
+              className={`flex flex-col min-w-[155px] text-left rounded-lg p-1.5 border cursor-pointer select-none transition-all hover:scale-105 active:scale-95 ${
+                accountMode === 'real'
+                  ? 'bg-emerald-500/10 border-emerald-500/25 hover:bg-emerald-500/15'
+                  : 'bg-amber-500/10 border-amber-500/25 hover:bg-amber-500/15'
+              }`}
+              title="Click to toggle between Real Account production and Demo sandbox mode instantly."
             >
-              <span className="text-[10px] text-emerald-400 font-mono uppercase tracking-wider flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
-                ADMIN REAL SECURE
+              <span className={`text-[10px] font-mono uppercase tracking-wider flex items-center gap-1.5 ${
+                accountMode === 'real' ? 'text-emerald-400' : 'text-amber-400'
+              }`}>
+                <span className={`w-1.5 h-1.5 rounded-full animate-ping ${
+                  accountMode === 'real' ? 'bg-emerald-500' : 'bg-amber-500'
+                }`}></span>
+                {accountMode === 'real' ? 'REAL ACCOUNT' : 'DEMO MODE'}
               </span>
-              <span className="text-sm font-bold font-mono mt-0.5 text-emerald-400">
+              <span className={`text-sm font-bold font-mono mt-0.5 ${
+                accountMode === 'real' ? 'text-emerald-400' : 'text-amber-400'
+              }`}>
                 ${modeBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
+            </div>
+
+            <div className="flex flex-col gap-1 min-w-[150px] border border-[#1E293B] rounded-lg p-1.5 bg-[#0F172A]/50">
+              <div className="flex justify-between items-center text-[10px] text-gray-400 font-mono gap-3">
+                <span className="uppercase tracking-wider">Spot Balance:</span>
+                <span className="text-emerald-400 font-bold">
+                  ${(accountMode === 'real' ? (state.realSpotBalance ?? 0) : (state.spotBalance ?? 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-[10px] text-gray-400 font-mono gap-3">
+                <span className="uppercase tracking-wider">Futures Balance:</span>
+                <span className="text-amber-400 font-bold">
+                  ${(accountMode === 'real' ? (state.realFuturesBalance ?? 0) : (state.futuresBalance ?? 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              </div>
             </div>
 
             <div className="hidden sm:block border-l border-[#1E293B] h-8" />
