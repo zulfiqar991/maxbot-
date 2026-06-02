@@ -41,7 +41,7 @@ export default function App() {
   const [state, setState] = useState<AccountState>({
     balance: 10000,
     realBalance: 50000,
-    accountMode: 'real',
+    accountMode: undefined,
     bots: [],
     gridBots: [],
     exchangeCredentials: [],
@@ -189,7 +189,7 @@ export default function App() {
     setState({
       balance: 10000,
       realBalance: 50000,
-      accountMode: 'real',
+      accountMode: undefined,
       bots: [],
       gridBots: [],
       exchangeCredentials: [],
@@ -440,6 +440,75 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#070a13] font-sans text-gray-200 antialiased selection:bg-[#FF5A00]/20 selection:text-[#FF5A00]">
       
+      {/* Explicit Account Mode Selector Dialog */}
+      {!state.accountMode && (
+        <div id="selection-overlay-container" className="fixed inset-0 bg-[#06080F]/95 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+          <div className="bg-[#0B0F19] border-2 border-orange-500/35 rounded-2xl p-8 max-w-xl w-full text-center space-y-6 shadow-2xl relative overflow-hidden animate-fadeIn">
+            <div className="absolute -top-24 -right-24 w-48 h-48 bg-orange-500/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+            
+            <div className="mx-auto bg-orange-500/10 w-16 h-16 rounded-full flex items-center justify-center border border-orange-500/20 shadow-lg shadow-orange-500/5">
+              <Shield className="w-8 h-8 text-[#FF5A00]" />
+            </div>
+
+            <div className="space-y-2">
+              <h2 className="text-2xl font-black text-white tracking-tight font-sans">Select Trading Environment</h2>
+              <p className="text-xs text-slate-400 font-sans">
+                Max Bot requires you to explicitly select an account environment. Sandbox (paper trading) has no pre-allocation. Choose between live network operations and simulated safety-net prototyping.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+              {/* Sandbox Case */}
+              <button
+                id="select-sandbox-btn"
+                onClick={() => handleUpdateExchangeSettings({ accountMode: 'paper' })}
+                className="bg-gradient-to-br from-[#121824] to-amber-500/5 hover:to-amber-500/10 border border-[#20293A] hover:border-amber-500/30 rounded-xl p-5 text-left transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] cursor-pointer relative group flex flex-col justify-between h-48"
+              >
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black text-amber-500 tracking-wider font-mono">SANDBOX ENVIRONMENT</span>
+                    <Layers className="w-4 h-4 text-amber-500 group-hover:scale-110 transition-transform" />
+                  </div>
+                  <h4 className="text-base font-bold text-white mt-2 font-sans">Sandbox Mode</h4>
+                  <p className="text-[11px] text-slate-400 mt-1.5 leading-relaxed font-sans">
+                    Activate simulated execution, testing webhook signals risk-free with custom faucet funds and instant order fills.
+                  </p>
+                </div>
+                <span className="bg-amber-500/10 text-amber-400 text-[10px] font-bold text-center py-2 px-3 rounded-lg border border-amber-500/20 block w-full mt-3 font-mono">
+                  ACTIVATE SANDBOX
+                </span>
+              </button>
+
+              {/* Real Mode Case */}
+              <button
+                id="select-real-btn"
+                onClick={() => handleUpdateExchangeSettings({ accountMode: 'real' })}
+                className="bg-gradient-to-br from-[#121824] to-emerald-500/5 hover:to-emerald-500/10 border border-[#20293A] hover:border-emerald-500/30 rounded-xl p-5 text-left transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] cursor-pointer relative group flex flex-col justify-between h-48"
+              >
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black text-emerald-400 tracking-wider font-mono">LIVE PRODUCTION</span>
+                    <TrendingUp className="w-4 h-4 text-emerald-400 group-hover:scale-110 transition-transform" />
+                  </div>
+                  <h4 className="text-base font-bold text-white mt-2 font-sans">Real Account</h4>
+                  <p className="text-[11px] text-slate-400 mt-1.5 leading-relaxed font-sans">
+                    Connect private API keys. Automatically checks spot or futures margin pools and routes direct webhook signals live.
+                  </p>
+                </div>
+                <span className="bg-emerald-500/20 text-emerald-400 text-[10px] font-bold text-center py-2 px-3 rounded-lg border border-emerald-500/30 block w-full mt-3 font-mono">
+                  ACTIVATE REAL ACCOUNT
+                </span>
+              </button>
+            </div>
+
+            <div className="text-[10px] text-zinc-500 font-mono font-bold uppercase tracking-wider">
+              Transparency Enforced: Switchable At Any Time
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Dynamic Header */}
       <Header 
         state={state} 

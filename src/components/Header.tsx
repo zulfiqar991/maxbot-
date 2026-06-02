@@ -29,7 +29,7 @@ export function Header({ state, onReset, isResetting, currentUser, onUpdateSetti
     .filter(d => d.status !== 'active')
     .reduce((sum, d) => sum + d.pnl, 0);
 
-  const modeBalance = accountMode === 'real' ? (state.realBalance ?? 50000) : (state.balance ?? 10000);
+  const modeBalance = accountMode === 'real' ? (state.realBalance ?? 0) : (state.balance ?? 10000);
   const netAssetValue = modeBalance + totalPnl;
 
   const handleToggleModeHeader = async () => {

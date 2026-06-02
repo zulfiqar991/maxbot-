@@ -130,7 +130,7 @@ export interface SignalLog {
   timestamp: string;
   pair: string;
   action: string;
-  payload: string;
+  payload?: string;
   status: 'success' | 'ignored' | 'error';
   message: string;
 }
@@ -162,6 +162,10 @@ export interface ExchangeCredential {
 export interface AccountState {
   balance: number;
   realBalance?: number; // Separate real balance for "Real Account" mode simulation
+  spotBalance?: number;
+  futuresBalance?: number;
+  realSpotBalance?: number;
+  realFuturesBalance?: number;
   accountMode?: 'paper' | 'real';
   exchangeCredentials?: ExchangeCredential[];
   activeDeals: Deal[];

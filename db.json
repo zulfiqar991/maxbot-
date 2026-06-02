@@ -7,8 +7,8 @@
       "password": "admin",
       "state": {
         "balance": 12030.03,
-        "realBalance": 12501.48,
-        "accountMode": "real",
+        "realBalance": 12501.81,
+        "accountMode": null,
         "exchangeCredentials": [
           {
             "id": "cred-1",
@@ -18,11 +18,11 @@
             "isEnabled": true,
             "createdAt": "2026-05-23T03:36:51.447Z",
             "withdrawalDisabled": true,
-            "balance": 12501.48,
-            "spotBalance": 5000.55,
+            "balance": 12501.81,
+            "spotBalance": 5000.88,
             "futuresBalance": 7500.93,
-            "realBalance": 12501.48,
-            "remainingBalance": 12501.48,
+            "realBalance": 12501.81,
+            "remainingBalance": 12501.81,
             "protocol": "REST+WS",
             "authMethod": "Sha256_Signature",
             "wsStatus": "Connected",

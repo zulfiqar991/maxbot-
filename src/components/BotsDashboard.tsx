@@ -39,9 +39,9 @@ export function BotsDashboard({
   onTriggerPineScript,
   onChangeView,
   exchangeCredentials = [],
-  realBalance = 50000,
+  realBalance = 0,
   username,
-  accountMode = 'paper',
+  accountMode = 'real',
   onUpdateSettings
 }: BotsDashboardProps) {
   const [activeTab, setActiveTab] = useState<'signal' | 'grid' | 'smart'>('signal');

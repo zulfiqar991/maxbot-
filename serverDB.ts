@@ -105,7 +105,7 @@ export const createDefaultState = (username: string): AccountState => ({
   futuresBalance: 0,
   realSpotBalance: 0,
   realFuturesBalance: 0,
-  accountMode: 'real',
+  accountMode: undefined,
   exchangeCredentials: [],
   activeDeals: [],
   bots: [],
@@ -211,9 +211,6 @@ export function loadDB(): DBStructure {
     if (!db.users["administrator"].state) {
       db.users["administrator"].state = createDefaultState("Administrator");
     }
-    if (!db.users["administrator"].state.accountMode) {
-      db.users["administrator"].state.accountMode = 'real';
-    }
   }
 
   // Auto-migrate old 'demo' user if it exists in historical databases
@@ -223,9 +220,6 @@ export function loadDB(): DBStructure {
       ...db.users["administrator"].state,
       ...demoNode.state
     };
-    if (!db.users["administrator"].state.accountMode) {
-      db.users["administrator"].state.accountMode = 'real';
-    }
     delete db.users["demo"];
   }
 
@@ -283,11 +277,7 @@ export function getUserStateFromHeader(authorizationHeader: string | undefined):
   }
   const userNode = db.users[username.toLowerCase()] || db.users["administrator"];
   
-  // Force Real Trading Mode as default but allow user setting persistence
   if (userNode && userNode.state) {
-    if (!userNode.state.accountMode) {
-      userNode.state.accountMode = 'real';
-    }
     ensureBalancesInitialized(userNode.state);
   }
 
@@ -459,6 +449,12 @@ export function runSimulationTick() {
       if (enabledCreds.length > 0) {
         const summedReal = enabledCreds.reduce((sum, c) => sum + (c.realBalance || c.balance || 0), 0);
         state.realBalance = parseFloat(summedReal.toFixed(2));
+        
+        const summedSpot = enabledCreds.reduce((sum, c) => sum + (c.spotBalance || 0), 0);
+        state.realSpotBalance = parseFloat(summedSpot.toFixed(2));
+        
+        const summedFutures = enabledCreds.reduce((sum, c) => sum + (c.futuresBalance || 0), 0);
+        state.realFuturesBalance = parseFloat(summedFutures.toFixed(2));
       }
     }
 

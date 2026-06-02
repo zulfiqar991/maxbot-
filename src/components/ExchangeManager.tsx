@@ -220,6 +220,9 @@ export function ExchangeManager({ state, onUpdateSettings, coinPrices = {}, user
       exchangeCredentials: updated,
       logs: [addLog, ...(state.logs || [])]
     });
+
+    // Automatically connect to the exchange and synchronize both Spot & Futures accounts!
+    handleSyncBalance(newCred.id, updated);
   };
 
   const handleRemoveKey = async (id: string) => {
@@ -260,8 +263,9 @@ export function ExchangeManager({ state, onUpdateSettings, coinPrices = {}, user
     await onUpdateSettings({ exchangeCredentials: updated });
   };
 
-  const handleSyncBalance = async (id: string) => {
-    const cred = exchangeCredentials.find(c => c.id === id);
+  const handleSyncBalance = async (id: string, customCredsList?: ExchangeCredential[]) => {
+    const listToSearch = customCredsList || exchangeCredentials;
+    const cred = listToSearch.find(c => c.id === id);
     if (!cred) return;
 
     setActiveSyncCredId(id);
