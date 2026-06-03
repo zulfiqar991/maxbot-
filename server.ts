@@ -5,7 +5,7 @@ import { GoogleGenAI } from '@google/genai';
 import { SignalBot, GridBot, GridLine, Deal, SignalLog, AccountState } from './src/types';
 import dotenv from 'dotenv';
 import fs from 'fs';
-import { fetchRealExchangeBalances } from './serverExchangeFetch';
+import { fetchRealExchangeBalances, executeRealExchangeOrder } from './serverExchangeFetch';
 
 dotenv.config();
 
@@ -119,6 +119,9 @@ app.post('/api/exchange/sync', async (req, res) => {
     };
 
     state.logs = [syncLog, ...(state.logs || [])];
+
+    // Automatically trigger fresh pairs synchronized from live markets so they are fully loaded and saved
+    runExchangePairsLiveSync().catch(err => console.error("Auto background pairs refresh error:", err));
 
     updateUserState(username, state);
     res.json({ success: true, state, debugLogs: result.debugLogs });
@@ -523,7 +526,7 @@ app.delete('/api/bots/:id', (req, res) => {
   state.bots = state.bots.filter(b => b.id !== botId);
   state.activeDeals = state.activeDeals.filter(deal => {
     if (deal.botId === botId && deal.status === 'active') {
-      const mode = state.accountMode || 'paper';
+      const mode = state.accountMode || 'real';
       addFunds(state, deal.volume + deal.pnl, strategyType, mode);
       return false;
     }
@@ -612,7 +615,7 @@ app.post('/api/deals/:id/close', (req, res) => {
     }
     deal.pnl = (deal.pnlPercent / 100) * deal.volume;
 
-    const mode = state.accountMode || 'paper';
+    const mode = state.accountMode || 'real';
     const relatedBot = (state.bots || []).find(b => b.id === deal.botId) || (state.gridBots || []).find(b => b.id === deal.botId);
     const strategyType = relatedBot ? relatedBot.strategyType : 'futures';
     addFunds(state, deal.volume + deal.pnl, strategyType, mode);
@@ -652,7 +655,7 @@ app.post('/api/reset', (req, res) => {
 });
 
 // SECURE USER-PERSONALIZED WEBHOOK ROUTE FOR TRADINGVIEW ALERTS
-app.post('/webhook/:userId/:botId', (req, res) => {
+app.post('/webhook/:userId/:botId', async (req, res) => {
   // Add logging inside webhook route to confirm alerts are received
   console.log(`[WEBHOOK RECEIVED] ${new Date().toISOString()} - POST /webhook/${req.params.userId}/${req.params.botId}`);
   console.log(`[WEBHOOK RAW BODY]`, typeof req.body === 'object' ? JSON.stringify(req.body, null, 2) : req.body);
@@ -801,8 +804,62 @@ app.post('/webhook/:userId/:botId', (req, res) => {
       deal.pnlPercent = deal.type === 'long' ? marginRatio * 100 * deal.leverage : -marginRatio * 100 * deal.leverage;
       deal.pnl = (deal.pnlPercent / 100) * deal.volume;
 
-      const mode = state.accountMode || 'paper';
+      const mode = state.accountMode || 'real';
       addFunds(state, deal.volume + deal.pnl, bot.strategyType || 'futures', mode);
+
+      if (mode === 'real') {
+        const credentials = state.exchangeCredentials || [];
+        const botExchange = (bot.exchange || '').toLowerCase();
+        const matchedKeys = credentials.filter(c => 
+          c.isEnabled && 
+          (botExchange.includes('paper') ||
+           c.name.toLowerCase().includes(botExchange) ||
+           botExchange.includes(c.name.toLowerCase()) ||
+           c.name.toLowerCase().includes('unified') ||
+           (botExchange && c.name.toLowerCase().includes(botExchange.substring(0, 4))))
+        );
+        if (matchedKeys.length > 0) {
+          const activeKey = matchedKeys[0];
+          const isPaperBot = botExchange.includes('paper') || activeKey.name.toLowerCase().includes('paper');
+          if (!isPaperBot) {
+            const exchangeLogs: string[] = [];
+            const execResult = await executeRealExchangeOrder(
+              activeKey,
+              bot,
+              resolvedAction,
+              cleanPair,
+              deal.volume,
+              currentPrice,
+              exchangeLogs
+            );
+            if (!execResult.success) {
+              state.logs.unshift({
+                id: 'log-err-exit-' + Math.random().toString(36).substring(2, 9),
+                botId: bot.id,
+                botName: bot.name,
+                timestamp: new Date().toISOString(),
+                pair: cleanPair,
+                action: resolvedAction,
+                payload: logPayloadStr,
+                status: 'error',
+                message: `⚠️ [EXCHANGE EXIT ERROR] Real exit order failed on ${activeKey.name} REST: ${execResult.errorMessage || 'Unknown error'}. Position closed locally in system panel.`
+              });
+            } else {
+              state.logs.unshift({
+                id: 'log-exit-success-' + Math.random().toString(36).substring(2, 9),
+                botId: bot.id,
+                botName: bot.name,
+                timestamp: new Date().toISOString(),
+                pair: cleanPair,
+                action: resolvedAction,
+                payload: logPayloadStr,
+                status: 'success',
+                message: `🟢 [EXCHANGE EXIT CONFIRMED] Real exit order successfully filled on ${activeKey.name}. ID: ${execResult.orderId}`
+              });
+            }
+          }
+        }
+      }
 
       state.logs.unshift({
         id: 'log-wc-' + Math.random().toString(36).substring(2, 9),
@@ -919,7 +976,7 @@ app.post('/webhook/:userId/:botId', (req, res) => {
     return res.status(200).json({ status: 'ignored', reason: 'Active deal already exists' });
   }
 
-  const userMode = state.accountMode || 'paper';
+  const userMode = state.accountMode || 'real';
 
   // 1. DIRECT API REAL BALANCE SYNCHRONIZATION BEFORE EXECUTING TRADE
   let fetchedBalance = userMode === 'real' ? (state.realBalance || 0) : state.balance;
@@ -1116,9 +1173,11 @@ app.post('/webhook/:userId/:botId', (req, res) => {
   }
 
   const strategyType = bot.strategyType || 'futures';
-  if (userMode === 'real') {
-    deductFunds(state, tradeVolume, strategyType, 'real');
+  let realOrderSuccess = true;
+  let realOrderId = '';
+  let realOrderError = '';
 
+  if (userMode === 'real') {
     const credentials = state.exchangeCredentials || [];
     const botExchange = (bot.exchange || '').toLowerCase();
     const matchedKeys = credentials.filter(c => 
@@ -1129,6 +1188,61 @@ app.post('/webhook/:userId/:botId', (req, res) => {
        c.name.toLowerCase().includes('unified') ||
        (botExchange && c.name.toLowerCase().includes(botExchange.substring(0, 4))))
     );
+
+    if (matchedKeys.length > 0) {
+      const activeKey = matchedKeys[0];
+      const isPaperBot = botExchange.includes('paper') || activeKey.name.toLowerCase().includes('paper');
+      if (!isPaperBot) {
+        const exchangeLogs: string[] = [];
+        const execResult = await executeRealExchangeOrder(
+          activeKey,
+          bot,
+          resolvedAction,
+          cleanPair,
+          tradeVolume,
+          currentPrice,
+          exchangeLogs
+        );
+
+        if (!execResult.success) {
+          realOrderSuccess = false;
+          realOrderError = execResult.errorMessage || 'Unknown exchange rejection';
+        } else {
+          realOrderId = execResult.orderId || '';
+          
+          state.logs.unshift({
+            id: 'log-entry-success-' + Math.random().toString(36).substring(2, 9),
+            botId: bot.id,
+            botName: bot.name,
+            timestamp: new Date().toISOString(),
+            pair: cleanPair,
+            action: resolvedAction,
+            payload: logPayloadStr,
+            status: 'success',
+            message: `🟢 [EXCHANGE ENTRY CONFIRMED] REAL trade successfully executed on ${activeKey.name}! Order ID: ${realOrderId}`
+          });
+        }
+      }
+    }
+
+    if (!realOrderSuccess) {
+      state.logs.unshift({
+        id: 'log-err-exchange-entry-' + Math.random().toString(36).substring(2, 9),
+        botId: bot.id,
+        botName: bot.name,
+        timestamp: new Date().toISOString(),
+        pair: cleanPair,
+        action: resolvedAction,
+        payload: logPayloadStr,
+        status: 'error',
+        message: `🚨 [EXCHANGE ENTRY REJECTED] Order failed to execute on ${activeExDesc}: ${realOrderError}. Check if API credentials have trade permission enabled.`
+      });
+      saveDB(db);
+      return res.status(400).json({ error: `Exchange Order Rejected: ${realOrderError}` });
+    }
+
+    deductFunds(state, tradeVolume, strategyType, 'real');
+
     if (matchedKeys.length > 0) {
       const activeKey = matchedKeys[0];
       if (activeKey.spotBalance !== undefined && bot.strategyType === 'spot') {
@@ -1155,9 +1269,19 @@ app.post('/webhook/:userId/:botId', (req, res) => {
   let tp3Price: number | undefined = undefined;
   let stopLossPrice: number | undefined = undefined;
 
-  const resolvedTakeProfitValue = bot.takeProfitValue !== undefined ? bot.takeProfitValue : ((bot as any).targetProfit || 1.5);
+  // TV signals percentages extraction
+  const alertTpPercent = payload.takeProfitPercent ?? payload.takeProfitValue ?? payload.tp_percent ?? payload.tp ?? payload.targetProfit;
+  const alertSlPercent = payload.stopLossPercent ?? payload.stopLossValue ?? payload.sl_percent ?? payload.sl;
+
+  const resolvedTakeProfitValue = (alertTpPercent !== undefined && typeof alertTpPercent === 'number')
+    ? alertTpPercent
+    : (bot.takeProfitValue !== undefined ? bot.takeProfitValue : ((bot as any).targetProfit || 1.5));
   const tpPercent = resolvedTakeProfitValue;
-  const slPercent = bot.stopLossValue || 1.5;
+
+  const resolvedStopLossValue = (alertSlPercent !== undefined && typeof alertSlPercent === 'number')
+    ? alertSlPercent
+    : (bot.stopLossValue || 1.5);
+  const slPercent = resolvedStopLossValue;
 
   const trailingTpEnabled = bot.trailingTakeProfit || false;
   const trailingTpDeviation = bot.trailingTpDeviation !== undefined ? bot.trailingTpDeviation : 0.2;
@@ -1266,7 +1390,7 @@ app.post('/webhook/:userId/:botId', (req, res) => {
 });
 
 // WEBHOOK ENDPOINT
-app.post('/api/webhooks', (req, res) => {
+app.post('/api/webhooks', async (req, res) => {
   const payload = req.body;
   const { bot_id, action, pair, volume } = payload;
   const logPayloadStr = JSON.stringify(payload, null, 2);
@@ -1399,8 +1523,62 @@ app.post('/api/webhooks', (req, res) => {
       deal.pnlPercent = deal.type === 'long' ? marginRatio * 100 * deal.leverage : -marginRatio * 100 * deal.leverage;
       deal.pnl = (deal.pnlPercent / 100) * deal.volume;
 
-      const mode = state.accountMode || 'paper';
+      const mode = state.accountMode || 'real';
       addFunds(state, deal.volume + deal.pnl, bot.strategyType || 'futures', mode);
+
+      if (mode === 'real') {
+        const credentials = state.exchangeCredentials || [];
+        const botExchange = (bot.exchange || '').toLowerCase();
+        const matchedKeys = credentials.filter(c => 
+          c.isEnabled && 
+          (botExchange.includes('paper') ||
+           c.name.toLowerCase().includes(botExchange) ||
+           botExchange.includes(c.name.toLowerCase()) ||
+           c.name.toLowerCase().includes('unified') ||
+           (botExchange && c.name.toLowerCase().includes(botExchange.substring(0, 4))))
+        );
+        if (matchedKeys.length > 0) {
+          const activeKey = matchedKeys[0];
+          const isPaperBot = botExchange.includes('paper') || activeKey.name.toLowerCase().includes('paper');
+          if (!isPaperBot) {
+            const exchangeLogs: string[] = [];
+            const execResult = await executeRealExchangeOrder(
+              activeKey,
+              bot,
+              resolvedAction,
+              cleanPair,
+              deal.volume,
+              currentPrice,
+              exchangeLogs
+            );
+            if (!execResult.success) {
+              state.logs.unshift({
+                id: 'log-err-exit-tv-' + Math.random().toString(36).substring(2, 9),
+                botId: bot.id,
+                botName: bot.name,
+                timestamp: new Date().toISOString(),
+                pair: cleanPair,
+                action: resolvedAction,
+                payload: logPayloadStr,
+                status: 'error',
+                message: `⚠️ [EXCHANGE EXIT ERROR] Real exit order failed on ${activeKey.name} REST: ${execResult.errorMessage || 'Unknown error'}. Position closed locally in system panel.`
+              });
+            } else {
+              state.logs.unshift({
+                id: 'log-exit-success-tv-' + Math.random().toString(36).substring(2, 9),
+                botId: bot.id,
+                botName: bot.name,
+                timestamp: new Date().toISOString(),
+                pair: cleanPair,
+                action: resolvedAction,
+                payload: logPayloadStr,
+                status: 'success',
+                message: `🟢 [EXCHANGE EXIT CONFIRMED] Real exit order successfully filled on ${activeKey.name}. ID: ${execResult.orderId}`
+              });
+            }
+          }
+        }
+      }
 
       state.logs.unshift({
         id: 'log-wc-' + Math.random().toString(36).substring(2, 9),
@@ -1515,7 +1693,7 @@ app.post('/api/webhooks', (req, res) => {
     return res.json({ status: 'ignored', reason: 'Active deal already exists' });
   }
 
-  const userMode = state.accountMode || 'paper';
+  const userMode = state.accountMode || 'real';
 
   // 1. DIRECT API REAL BALANCE SYNCHRONIZATION BEFORE EXECUTING TRADE
   let fetchedBalance = userMode === 'real' ? (state.realBalance || 0) : state.balance;
@@ -1734,7 +1912,74 @@ app.post('/api/webhooks', (req, res) => {
     }
   }
 
+  let realOrderSuccess = true;
+  let realOrderId = '';
+  let realOrderError = '';
+
   if (userMode === 'real') {
+    const credentials = state.exchangeCredentials || [];
+    const botExchange = (bot.exchange || '').toLowerCase();
+    const matchedKeys = credentials.filter(c => 
+      c.isEnabled && 
+      (botExchange.includes('paper') ||
+       c.name.toLowerCase().includes(botExchange) ||
+       botExchange.includes(c.name.toLowerCase()) ||
+       c.name.toLowerCase().includes('unified') ||
+       (botExchange && c.name.toLowerCase().includes(botExchange.substring(0, 4))))
+    );
+
+    if (matchedKeys.length > 0) {
+      const activeKey = matchedKeys[0];
+      const isPaperBot = botExchange.includes('paper') || activeKey.name.toLowerCase().includes('paper');
+      if (!isPaperBot) {
+        const exchangeLogs: string[] = [];
+        const execResult = await executeRealExchangeOrder(
+          activeKey,
+          bot,
+          resolvedAction,
+          cleanPair,
+          tradeVolume,
+          currentPrice,
+          exchangeLogs
+        );
+
+        if (!execResult.success) {
+          realOrderSuccess = false;
+          realOrderError = execResult.errorMessage || 'Unknown exchange rejection';
+        } else {
+          realOrderId = execResult.orderId || '';
+          
+          state.logs.unshift({
+            id: 'log-entry-success-tv-' + Math.random().toString(36).substring(2, 9),
+            botId: bot.id,
+            botName: bot.name,
+            timestamp: new Date().toISOString(),
+            pair: cleanPair,
+            action: resolvedAction,
+            payload: logPayloadStr,
+            status: 'success',
+            message: `🟢 [EXCHANGE ENTRY CONFIRMED] REAL trade successfully executed on ${activeKey.name}! Order ID: ${realOrderId}`
+          });
+        }
+      }
+    }
+
+    if (!realOrderSuccess) {
+      state.logs.unshift({
+        id: 'log-err-exchange-entry-tv-' + Math.random().toString(36).substring(2, 9),
+        botId: bot.id,
+        botName: bot.name,
+        timestamp: new Date().toISOString(),
+        pair: cleanPair,
+        action: resolvedAction,
+        payload: logPayloadStr,
+        status: 'error',
+        message: `🚨 [EXCHANGE ENTRY REJECTED] Order failed to execute on ${activeExDesc}: ${realOrderError}. Check if API credentials have trade permission enabled.`
+      });
+      saveDB(db);
+      return res.status(400).json({ error: `Exchange Order Rejected: ${realOrderError}` });
+    }
+
     state.realBalance = parseFloat(((state.realBalance || 0) - tradeVolume).toFixed(2));
   } else {
     state.balance = parseFloat((state.balance - tradeVolume).toFixed(2));

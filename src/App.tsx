@@ -130,10 +130,13 @@ export default function App() {
           headers: getHeaders()
         });
         if (res.ok) {
-          const data = await res.json();
-          setState(data.state);
-          setCoinPrices(data.coinPrices || {});
-          setIsConnected(true);
+          const contentType = res.headers.get('content-type') || '';
+          if (contentType.includes('application/json')) {
+            const data = await res.json();
+            setState(data.state);
+            setCoinPrices(data.coinPrices || {});
+            setIsConnected(true);
+          }
         }
       }
     } catch (err) {
@@ -149,6 +152,12 @@ export default function App() {
         headers: getHeaders()
       });
       if (res.ok) {
+        const contentType = res.headers.get('content-type') || '';
+        if (!contentType.includes('application/json')) {
+          console.warn('Sandbox trading server connection is offline or restarting. Recovering automatically...');
+          setIsConnected(false);
+          return;
+        }
         const data = await res.json();
         
         // Check if the server fell back or if the user got wiped from the database
@@ -175,7 +184,7 @@ export default function App() {
       }
     } catch (err: any) {
       setIsConnected(false);
-      if (err instanceof TypeError || String(err).includes('Failed to fetch') || String(err).includes('fetch')) {
+      if (err instanceof TypeError || err instanceof SyntaxError || String(err).includes('Failed to fetch') || String(err).includes('fetch') || String(err).includes('token') || String(err).includes('JSON')) {
         console.warn('Sandbox trading server connection is offline or restarting. Recovering automatically...');
       } else {
         console.error('Error fetching state from endpoint API:', err);

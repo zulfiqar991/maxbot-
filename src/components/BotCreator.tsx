@@ -141,7 +141,10 @@ export function BotCreator({ onSave, onSaveGrid, isSaving, onCancel, botToEdit, 
     'WIF/USDT', 'FET/USDT', 'RNDR/USDT', 'ATOM/USDT', 'FIL/USDT',
     'UNI/USDT', 'ETC/USDT', 'BCH/USDT', 'ICP/USDT', 'FTM/USDT',
     'IMX/USDT', 'GRT/USDT', 'STX/USDT', 'HBAR/USDT', 'TAO/USDT',
-    'GALA/USDT', 'VET/USDT', 'THETA/USDT'
+    'GALA/USDT', 'VET/USDT', 'THETA/USDT', 'TRX/USDT', 'XLM/USDT',
+    'TON/USDT', 'BOME/USDT', 'ENA/USDT', 'NOT/USDT', 'BONK/USDT',
+    'POPCAT/USDT', 'BRETT/USDT', 'EIGEN/USDT', 'MOODENG/USDT', 'GOAT/USDT',
+    'PNUT/USDT', 'CHILLGUY/USDT', 'VIRTUAL/USDT', 'SPX/USDT', 'RENDER/USDT'
   ];
 
   const [exchangePairs, setExchangePairs] = useState<Record<string, { spot: string[], futures: string[] }>>({});
@@ -536,6 +539,40 @@ export function BotCreator({ onSave, onSaveGrid, isSaving, onCancel, botToEdit, 
                         })()} Pairs)</span>
                         <span className="text-gray-500 font-mono font-medium rounded bg-slate-900 px-1 text-[9px]">Cash Assets</span>
                       </div>
+                      {(activeTab === 'signal' || activeTab === 'master') && (
+                        <div className="flex items-center space-x-3 py-1 text-[11px]">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const activeExKey = getMappedExchangeKey();
+                              const rawSpots = exchangePairs[activeExKey]?.spot || presetsPairs;
+                              const activeSpotPairs = rawSpots.filter(p => !pairFilterValue || p.toLowerCase().includes(pairFilterValue.toLowerCase()));
+                              const newSelected = Array.from(new Set([...selectedPairs, ...activeSpotPairs]));
+                              setSelectedPairs(newSelected);
+                            }}
+                            className="text-[#FF5A00] hover:underline font-medium cursor-pointer"
+                          >
+                            ✓ Select All Filtered ({(() => {
+                              const activeExKey = getMappedExchangeKey();
+                              const rawSpots = exchangePairs[activeExKey]?.spot || presetsPairs;
+                              return rawSpots.filter(p => !pairFilterValue || p.toLowerCase().includes(pairFilterValue.toLowerCase())).length;
+                            })()})
+                          </button>
+                          <span className="text-gray-600">|</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const activeExKey = getMappedExchangeKey();
+                              const rawSpots = exchangePairs[activeExKey]?.spot || presetsPairs;
+                              const activeSpotPairs = rawSpots.filter(p => !pairFilterValue || p.toLowerCase().includes(pairFilterValue.toLowerCase()));
+                              setSelectedPairs(selectedPairs.filter(p => !activeSpotPairs.includes(p)));
+                            }}
+                            className="text-gray-400 hover:text-white hover:underline cursor-pointer"
+                          >
+                            ✗ Deselect Filtered
+                          </button>
+                        </div>
+                      )}
                       <div className="flex flex-wrap gap-2 max-h-[160px] overflow-y-auto pr-1 pb-1">
                         {(() => {
                           const activeExKey = getMappedExchangeKey();
@@ -590,6 +627,40 @@ export function BotCreator({ onSave, onSaveGrid, isSaving, onCancel, botToEdit, 
                         })()} Contracts)</span>
                         <span className="text-[#FF5A00] font-mono font-medium rounded bg-[#FF5A00]/5 px-1 text-[9px]">Margin Leverage</span>
                       </div>
+                      {(activeTab === 'signal' || activeTab === 'master') && (
+                        <div className="flex items-center space-x-3 py-1 text-[11px]">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const activeExKey = getMappedExchangeKey();
+                              const rawFutures = exchangePairs[activeExKey]?.futures || presetsPairs;
+                              const activeFuturesPairs = rawFutures.filter(p => !pairFilterValue || p.toLowerCase().includes(pairFilterValue.toLowerCase()));
+                              const newSelected = Array.from(new Set([...selectedPairs, ...activeFuturesPairs]));
+                              setSelectedPairs(newSelected);
+                            }}
+                            className="text-[#FF5A00] hover:underline font-medium cursor-pointer"
+                          >
+                            ✓ Select All Filtered ({(() => {
+                              const activeExKey = getMappedExchangeKey();
+                              const rawFutures = exchangePairs[activeExKey]?.futures || presetsPairs;
+                              return rawFutures.filter(p => !pairFilterValue || p.toLowerCase().includes(pairFilterValue.toLowerCase())).length;
+                            })()})
+                          </button>
+                          <span className="text-gray-600">|</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const activeExKey = getMappedExchangeKey();
+                              const rawFutures = exchangePairs[activeExKey]?.futures || presetsPairs;
+                              const activeFuturesPairs = rawFutures.filter(p => !pairFilterValue || p.toLowerCase().includes(pairFilterValue.toLowerCase()));
+                              setSelectedPairs(selectedPairs.filter(p => !activeFuturesPairs.includes(p)));
+                            }}
+                            className="text-gray-400 hover:text-white hover:underline cursor-pointer"
+                          >
+                            ✗ Deselect Filtered
+                          </button>
+                        </div>
+                      )}
                       <div className="flex flex-wrap gap-2 max-h-[160px] overflow-y-auto pr-1 pb-1">
                         {(() => {
                           const activeExKey = getMappedExchangeKey();

@@ -63,19 +63,28 @@ export function Header({ state, onReset, isResetting, currentUser, onUpdateSetti
           {/* Stats Bar */}
           <div className="flex flex-wrap items-center gap-4 lg:gap-6 bg-[#111827] border border-[#1E293B] rounded-xl px-5 py-3 shadow-md">
             
-            <div
+            <button
               id="header_toggle_mode_btn"
-              className="flex flex-col min-w-[155px] text-left rounded-lg p-1.5 border bg-emerald-500/10 border-emerald-500/25 select-none transition-all"
-              title="Verified Real Account production mode."
+              onClick={handleToggleModeHeader}
+              className={`flex flex-col min-w-[155px] text-left rounded-lg p-1.5 border transition-all cursor-pointer hover:scale-[1.02] active:scale-95 ${
+                accountMode === 'real'
+                  ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-400'
+                  : 'bg-sky-500/10 border-sky-500/25 text-sky-450'
+              }`}
+              title="Click to switch between Real Live API Mode and Practice Demo Mode"
             >
-              <span className="text-[10px] font-mono uppercase tracking-wider flex items-center gap-1.5 text-emerald-400">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                REAL ACCOUNT
+              <span className={`text-[10px] font-mono uppercase tracking-wider flex items-center gap-1.5 ${
+                accountMode === 'real' ? 'text-emerald-400' : 'text-sky-400'
+              }`}>
+                <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${
+                  accountMode === 'real' ? 'bg-emerald-500' : 'bg-sky-500'
+                }`}></span>
+                {accountMode === 'real' ? 'REAL LIVE MULTI-API' : 'DEMO PRACTICE MODE'}
               </span>
-              <span className="text-sm font-bold font-mono mt-0.5 text-emerald-400">
-                ${(state.realBalance ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              <span className="text-sm font-bold font-mono mt-0.5 text-white">
+                ${modeBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
-            </div>
+            </button>
 
             <div className="flex flex-col gap-1 min-w-[210px] border border-[#1E293B] rounded-lg p-1 bg-[#0F172A]/50">
               {/* Spot Account Toggle button */}
@@ -101,7 +110,7 @@ export function Header({ state, onReset, isResetting, currentUser, onUpdateSetti
                 </div>
                 <div className="flex items-center gap-1">
                   <span>
-                    ${(state.realSpotBalance ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    ${(accountMode === 'real' ? (state.realSpotBalance ?? 0) : (state.spotBalance ?? 5000)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
                   {(state.activeAccountType || 'futures') === 'spot' && (
                     <span className="text-[8px] bg-emerald-500 text-slate-950 font-black px-1 rounded-sm ml-1 transform scale-90">ACTIVE</span>
@@ -132,7 +141,7 @@ export function Header({ state, onReset, isResetting, currentUser, onUpdateSetti
                 </div>
                 <div className="flex items-center gap-1">
                   <span>
-                    ${(state.realFuturesBalance ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    ${(accountMode === 'real' ? (state.realFuturesBalance ?? 0) : (state.futuresBalance ?? 5000)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
                   {(state.activeAccountType || 'futures') === 'futures' && (
                     <span className="text-[8px] bg-amber-500 text-slate-950 font-black px-1 rounded-sm ml-1 transform scale-90">ACTIVE</span>

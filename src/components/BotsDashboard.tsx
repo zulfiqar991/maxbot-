@@ -223,27 +223,95 @@ if (sellSignal)
   return (
     <div className="space-y-6">
 
-      {/* Environment Control & Routing policy Hub */}
-      <div className="bg-gradient-to-r from-[#111827] to-[#0D1525] border border-[#1E293B] rounded-2xl p-5 shadow-lg relative overflow-hidden" id="environment_control_hub">
-        <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-gradient-to-l pointer-events-none transition-all duration-300 from-emerald-500/5" />
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-          <div className="space-y-2 max-w-2xl">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 text-[10px] uppercase font-mono px-2 py-0.5 rounded font-extrabold border bg-opacity-10 bg-emerald-500 text-emerald-400 border-emerald-500/20">
-                <Shield className="w-3 h-3" />
-                PRODUCTION ENVIRONMENT
-              </span>
-              <span className="text-[10px] text-gray-400 font-mono">Max Bot Core Gateway</span>
+      {/* Dynamic Environment Picker: Real vs Practice Demo */}
+      <div className="bg-[#0B0F19] border border-[#1E293B] rounded-2xl p-6 shadow-xl relative overflow-hidden" id="environment_control_hub">
+        <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-gradient-to-l pointer-events-none transition-all duration-300 from-[#FF5A00]/5" />
+        
+        <div className="flex flex-col gap-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#1E293B] pb-4">
+            <div>
+              <h3 className="text-base font-black text-white uppercase tracking-wider flex items-center gap-2">
+                <Sliders className="w-5 h-5 text-orange-500" /> Executive Operating Environment Switcher
+              </h3>
+              <p className="text-xs text-slate-400 mt-1">Select your trading terminal profile. Changes apply instantly and save automatically to your administrator profile.</p>
             </div>
-            <h3 className="text-base font-bold text-white tracking-tight">Enterprise Multi-API Router Pipeline</h3>
-            <p className="text-xs text-slate-300 leading-relaxed">
-              Max Bot is connected securely to official exchange APIs, utilizing real assets, orders, and real-time ledger records. Sandbox and paper trading modes are disabled.
-            </p>
-            <div className="pt-1 flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <p className="text-[11px] font-mono font-medium text-emerald-400">
-                🟢 CONNECTED TO REAL PRODUCTION: Spot (https://api.binance.com), Futures (https://fapi.binance.com), Margin (https://api.binance.com/sapi)
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-gray-400 font-mono">Current System State:</span>
+              <span className={`text-[9px] font-mono font-black uppercase tracking-wider px-2.5 py-0.5 rounded ${
+                accountMode === 'real'
+                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 animate-pulse'
+                  : 'bg-sky-500/10 text-sky-450 border border-sky-500/20'
+              }`}>
+                {accountMode === 'real' ? '● Real Live Account API Routing Active' : '● Demo Sandbox Trading Active'}
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Real multi-api channel option */}
+            <div
+              onClick={() => onUpdateSettings && onUpdateSettings({ accountMode: 'real' })}
+              className={`relative rounded-xl p-5 border cursor-pointer select-none transition-all duration-300 transform active:scale-[0.99] ${
+                accountMode === 'real'
+                  ? 'bg-[#101F1B]/90 border-emerald-500 shadow-lg shadow-emerald-500/10'
+                  : 'bg-[#111827]/40 border-[#1E293B] hover:border-slate-700 hover:bg-[#111827]/80'
+              }`}
+            >
+              <div className="flex justify-between items-start">
+                <div className="space-y-1">
+                  <span className={`inline-block text-[9px] font-extrabold uppercase tracking-widest font-mono px-2 py-0.5 rounded ${
+                    accountMode === 'real' ? 'bg-emerald-500 text-slate-950' : 'bg-slate-800 text-slate-400'
+                  }`}>
+                    Option 1: Real Account API
+                  </span>
+                  <h4 className="text-sm font-bold text-white mt-1">Real API Executive Terminal (Default)</h4>
+                </div>
+                <div className={`w-5 h-5 rounded-full border flex items-center justify-center ${
+                  accountMode === 'real' ? 'border-emerald-500 bg-emerald-500 text-slate-950' : 'border-slate-700'
+                }`}>
+                  {accountMode === 'real' && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                </div>
+              </div>
+              <p className="text-xs text-slate-300 leading-relaxed mt-2.5">
+                Routes all active signals & grid limits directly to the configured live API channels (Binance, Bybit, OKX, etc.). Securely utilizes real-time assets, balance pools, and orderbooks.
               </p>
+              <div className="flex items-center gap-1.5 mt-3.5 text-[10px] text-emerald-400 font-mono">
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span>Default Mode: Real balances & dynamic signed headers enabled</span>
+              </div>
+            </div>
+
+            {/* Simulated Demo Play sandbox channel option */}
+            <div
+              onClick={() => onUpdateSettings && onUpdateSettings({ accountMode: 'paper' })}
+              className={`relative rounded-xl p-5 border cursor-pointer select-none transition-all duration-300 transform active:scale-[0.99] ${
+                accountMode === 'paper'
+                  ? 'bg-[#0F1E29]/90 border-sky-500 shadow-lg shadow-sky-500/10'
+                  : 'bg-[#111827]/40 border-[#1E293B] hover:border-slate-700 hover:bg-[#111827]/80'
+              }`}
+            >
+              <div className="flex justify-between items-start">
+                <div className="space-y-1">
+                  <span className={`inline-block text-[9px] font-extrabold uppercase tracking-widest font-mono px-2 py-0.5 rounded ${
+                    accountMode === 'paper' ? 'bg-sky-500 text-slate-950' : 'bg-slate-800 text-slate-400'
+                  }`}>
+                    Option 2: Demo Account
+                  </span>
+                  <h4 className="text-sm font-bold text-white mt-1">Practice Demo Sandbox</h4>
+                </div>
+                <div className={`w-5 h-5 rounded-full border flex items-center justify-center ${
+                  accountMode === 'paper' ? 'border-sky-500 bg-sky-500 text-slate-950' : 'border-slate-700'
+                }`}>
+                  {accountMode === 'paper' && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                </div>
+              </div>
+              <p className="text-xs text-slate-300 leading-relaxed mt-2.5">
+                Practice trading with zero risk. Simulates spot and perpetual swap orderbook fills instantly. Perfect for debugging automated TradingView signals and learning bot configs.
+              </p>
+              <div className="flex items-center gap-1.5 mt-3.5 text-[10px] text-sky-400 font-mono">
+                <div className="w-1.5 h-1.5 rounded-full bg-[#38bdf8]" />
+                <span>Simulated paper trades: Zero fees & auto-replenish margin buffer</span>
+              </div>
             </div>
           </div>
         </div>
@@ -677,7 +745,7 @@ if (sellSignal)
               className="bg-[#080B11] border border-[#20293A] rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-[#FF5A00]"
             >
               <option value="All">All Exchanges</option>
-              <option value="Paper Trading">Paper Trading</option>
+              <option value="Paper Trading">Demo Practice Sandbox</option>
               <option value="Binance.com Spot">Binance.com Spot</option>
               <option value="Binance.com Futures">Binance.com Futures</option>
               <option value="WEEX.com Spot">WEEX.com Spot</option>

@@ -104,12 +104,12 @@ export function DealsTracker({ deals, onCloseDeal, isClosing, accountMode }: Dea
       {/* Upper info section */}
       <div>
         <h2 className="text-xl font-bold text-white tracking-tight">
-          {accountMode === 'real' ? 'Real Execution Terminal' : 'Paper Trading Terminal'}
+          {accountMode === 'real' ? 'Real Execution Terminal' : 'Practice Demo Terminal'}
         </h2>
         <p className="text-xs text-gray-400 mt-1">
           {accountMode === 'real' 
             ? 'Live connected exchange active positions and REST/WebSocket trade history logs' 
-            : 'Live active positions and historic webhook executed paper trade logs'}
+            : 'Simulated active positions and historic webhook practice trade logs'}
         </p>
       </div>
 

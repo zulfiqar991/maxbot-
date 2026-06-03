@@ -105,7 +105,7 @@ export const createDefaultState = (username: string): AccountState => ({
   futuresBalance: 5000,
   realSpotBalance: 25000,
   realFuturesBalance: 25000,
-  accountMode: undefined,
+  accountMode: 'real',
   exchangeCredentials: [],
   activeDeals: [],
   bots: [],
@@ -528,7 +528,7 @@ export function runSimulationTick() {
         deal.updatedAt = new Date().toISOString();
 
         const relatedBot = state.bots?.find(b => b.id === deal.botId);
-        const userMode = state.accountMode || 'paper';
+        const userMode = state.accountMode || 'real';
 
         // --- 3COMMAS DCA SAFETY ORDER LOGIC ---
         const maxSO = deal.maxSafetyOrders !== undefined ? deal.maxSafetyOrders : (relatedBot?.maxSafetyOrders || 0);
@@ -1231,7 +1231,7 @@ export function runSimulationTick() {
             const microAmount = parseFloat((tradeSize * stepPercent * multiplier * (Math.random() * 0.4 + 0.8)).toFixed(2)) || 0.45;
 
             grid.gridProfit = parseFloat((grid.gridProfit + microAmount).toFixed(2));
-            const userMode = state.accountMode || 'paper';
+            const userMode = state.accountMode || 'real';
             if (userMode === 'real') {
               state.realBalance = parseFloat(((state.realBalance || 0) + microAmount).toFixed(2));
             } else {
