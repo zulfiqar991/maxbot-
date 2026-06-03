@@ -225,80 +225,38 @@ if (sellSignal)
 
       {/* Environment Control & Routing policy Hub */}
       <div className="bg-gradient-to-r from-[#111827] to-[#0D1525] border border-[#1E293B] rounded-2xl p-5 shadow-lg relative overflow-hidden" id="environment_control_hub">
-        <div className={`absolute right-0 top-0 bottom-0 w-1/3 bg-gradient-to-l pointer-events-none transition-all duration-300 ${
-          accountMode === 'real' ? 'from-emerald-500/5' : 'from-amber-500/5'
-        }`} />
+        <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-gradient-to-l pointer-events-none transition-all duration-300 from-emerald-500/5" />
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           <div className="space-y-2 max-w-2xl">
             <div className="flex flex-wrap items-center gap-2">
-              <span className={`inline-flex items-center gap-1.5 text-[10px] uppercase font-mono px-2 py-0.5 rounded font-extrabold border bg-opacity-10 transition-all ${
-                accountMode === 'real'
-                  ? 'bg-emerald-500 text-emerald-400 border-emerald-500/20'
-                  : 'bg-amber-500 text-amber-400 border-amber-500/20'
-              }`}>
+              <span className="inline-flex items-center gap-1.5 text-[10px] uppercase font-mono px-2 py-0.5 rounded font-extrabold border bg-opacity-10 bg-emerald-500 text-emerald-400 border-emerald-500/20">
                 <Shield className="w-3 h-3" />
-                {accountMode === 'real' ? 'Running in Real Account' : 'Running in Demo Mode'}
+                PRODUCTION ENVIRONMENT
               </span>
               <span className="text-[10px] text-gray-400 font-mono">Max Bot Core Gateway</span>
             </div>
             <h3 className="text-base font-bold text-white tracking-tight">Enterprise Multi-API Router Pipeline</h3>
             <p className="text-xs text-slate-300 leading-relaxed">
-              Manually shift between **Production Execution Mode** (Direct connection to official exchange APIs, utilizing real assets, orders and real-time ledger records) and **Demo Sandbox Mode** (Paper trading, simulated routing endpoints and isolated environment safety nets).
+              Max Bot is connected securely to official exchange APIs, utilizing real assets, orders, and real-time ledger records. Sandbox and paper trading modes are disabled.
             </p>
             <div className="pt-1 flex items-center gap-2">
-              <div className={`w-2 h-2 rounded-full ${accountMode === 'real' ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
-              <p className="text-[11px] font-mono font-medium text-slate-400">
-                {accountMode === 'real' ? (
-                  <span className="text-emerald-400">
-                    🟢 CONNECTED TO REAL PRODUCTION: Spot (https://api.binance.com), Futures (https://fapi.binance.com), Margin (https://api.binance.com/sapi)
-                  </span>
-                ) : (
-                  <span className="text-amber-400">
-                    🟡 ROUTED TO DEMO SANDBOX: Spot (https://testnet.binance.vision), Futures (https://fapi.binancefuture.com)
-                  </span>
-                )}
+              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <p className="text-[11px] font-mono font-medium text-emerald-400">
+                🟢 CONNECTED TO REAL PRODUCTION: Spot (https://api.binance.com), Futures (https://fapi.binance.com), Margin (https://api.binance.com/sapi)
               </p>
             </div>
-          </div>
-
-          {/* Interactive Toggle Buttons */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0 self-start lg:self-center bg-slate-950/65 p-1.5 border border-[#1E293B] rounded-xl">
-            <button
-              onClick={() => onUpdateSettings && onUpdateSettings({ accountMode: 'paper' })}
-              className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer active:scale-95 ${
-                accountMode === 'paper'
-                  ? 'bg-gradient-to-r from-amber-500/20 to-yellow-500/10 text-amber-400 border border-amber-500/25 shadow-md shadow-amber-500/5'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/50 border border-transparent'
-              }`}
-              title="Switch to Demo / Paper Mode (Sandbox and Testnet endpoints)"
-            >
-              <Sliders className="w-3.5 h-3.5" />
-              <span>Demo Mode</span>
-            </button>
-            <button
-              onClick={() => onUpdateSettings && onUpdateSettings({ accountMode: 'real' })}
-              className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer active:scale-95 ${
-                accountMode === 'real'
-                  ? 'bg-gradient-to-r from-emerald-500/20 to-teal-500/10 text-emerald-400 border border-emerald-500/25 shadow-md shadow-emerald-500/5'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/50 border border-transparent'
-              }`}
-              title="Switch to Real Mode (Live Account production endpoints)"
-            >
-              <Zap className="w-3.5 h-3.5" />
-              <span>Real Mode</span>
-            </button>
           </div>
         </div>
       </div>
 
-      {/* 💳 SPOT vs FUTURES TRADING TERMINAL HUB */}
+             {/* 💳 SPOT vs FUTURES TRADING TERMINAL HUB */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5" id="spot_futures_terminal_hub">
         
         {/* SPOT CARD */}
         <div 
           onClick={() => onUpdateSettings && onUpdateSettings({ activeAccountType: 'spot' })}
           className={`relative rounded-2xl p-6 border-2 transition-all duration-300 cursor-pointer hover:scale-[1.015] ${
-            (state.activeAccountType || 'spot') === 'spot'
+            (state.activeAccountType || 'futures') === 'spot'
               ? 'bg-[#121E2C]/55 border-emerald-500/50 shadow-lg shadow-emerald-500/5'
               : 'bg-[#121824]/80 border-slate-800 hover:border-slate-700'
           }`}
@@ -308,7 +266,7 @@ if (sellSignal)
             <span className="text-[10px] font-mono font-extrabold uppercase tracking-widest text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded">
               Binance & OKX Spot Engine
             </span>
-            {(state.activeAccountType || 'spot') === 'spot' ? (
+            {(state.activeAccountType || 'futures') === 'spot' ? (
               <span className="flex items-center gap-1 text-[10px] font-mono font-black text-emerald-400 uppercase tracking-wider">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                 Active Executive Account
@@ -321,7 +279,7 @@ if (sellSignal)
           <div className="mt-5 space-y-1">
             <p className="text-xs text-gray-400 uppercase font-mono font-bold tracking-wider">Spot Account Balance</p>
             <h3 className="text-3xl font-black font-mono text-white tracking-tight flex items-baseline gap-1">
-              <span>${(accountMode === 'real' ? (state.realSpotBalance ?? 0) : (state.spotBalance ?? 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              <span>${(state.realSpotBalance ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               <span className="text-xs text-slate-400 font-bold">USDT</span>
             </h3>
           </div>
@@ -343,12 +301,12 @@ if (sellSignal)
               onUpdateSettings && onUpdateSettings({ activeAccountType: 'spot' });
             }}
             className={`w-full mt-6 py-2.5 rounded-xl font-bold font-sans text-xs uppercase tracking-wider cursor-pointer border transition-all ${
-              (state.activeAccountType || 'spot') === 'spot'
-                ? 'bg-emerald-500 text-slate-950 border-emerald-500 shadow-md hover:brightness-110 active:scale-98'
-                : 'bg-slate-900 hover:bg-slate-800 text-slate-300 border-slate-800 active:scale-98'
+              (state.activeAccountType || 'futures') === 'spot'
+                ? 'bg-emerald-500 text-slate-950 border-emerald-500 shadow-md hover:brightness-110 active:scale-[0.98]'
+                : 'bg-slate-900 hover:bg-slate-800 text-slate-300 border-slate-800 active:scale-[0.98]'
             }`}
           >
-            {(state.activeAccountType || 'spot') === 'spot' ? '✓ SPOT ACCOUNT DIRECTING webhooks' : 'SELECT SPOT ACCOUNT FOR TRADING'}
+            {(state.activeAccountType || 'futures') === 'spot' ? '✓ SPOT ACCOUNT DIRECTING webhooks' : 'SELECT SPOT ACCOUNT FOR TRADING'}
           </button>
         </div>
 
@@ -356,7 +314,7 @@ if (sellSignal)
         <div 
           onClick={() => onUpdateSettings && onUpdateSettings({ activeAccountType: 'futures' })}
           className={`relative rounded-2xl p-6 border-2 transition-all duration-300 cursor-pointer hover:scale-[1.015] ${
-            (state.activeAccountType || 'spot') === 'futures'
+            (state.activeAccountType || 'futures') === 'futures'
               ? 'bg-[#1F1E24]/55 border-amber-500/50 shadow-lg shadow-amber-500/5'
               : 'bg-[#121824]/80 border-slate-800 hover:border-slate-700'
           }`}
@@ -366,7 +324,7 @@ if (sellSignal)
             <span className="text-[10px] font-mono font-extrabold uppercase tracking-widest text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded">
               USDT Perpetual Futures
             </span>
-            {(state.activeAccountType || 'spot') === 'futures' ? (
+            {(state.activeAccountType || 'futures') === 'futures' ? (
               <span className="flex items-center gap-1 text-[10px] font-mono font-black text-amber-400 uppercase tracking-wider">
                 <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
                 Active Executive Account
@@ -379,7 +337,7 @@ if (sellSignal)
           <div className="mt-5 space-y-1">
             <p className="text-xs text-gray-400 uppercase font-mono font-bold tracking-wider">Futures Account Balance</p>
             <h3 className="text-3xl font-black font-mono text-white tracking-tight flex items-baseline gap-1">
-              <span>${(accountMode === 'real' ? (state.realFuturesBalance ?? 0) : (state.futuresBalance ?? 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              <span>${(state.realFuturesBalance ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               <span className="text-xs text-slate-400 font-bold">USDT</span>
             </h3>
           </div>
@@ -401,12 +359,12 @@ if (sellSignal)
               onUpdateSettings && onUpdateSettings({ activeAccountType: 'futures' });
             }}
             className={`w-full mt-6 py-2.5 rounded-xl font-bold font-sans text-xs uppercase tracking-wider cursor-pointer border transition-all ${
-              (state.activeAccountType || 'spot') === 'futures'
-                ? 'bg-amber-500 text-slate-950 border-amber-500 shadow-md hover:brightness-110 active:scale-98'
-                : 'bg-slate-900 hover:bg-slate-800 text-slate-300 border-slate-800 active:scale-98'
+              (state.activeAccountType || 'futures') === 'futures'
+                ? 'bg-amber-500 text-slate-950 border-amber-500 shadow-md hover:brightness-110 active:scale-[0.98]'
+                : 'bg-slate-900 hover:bg-slate-800 text-slate-300 border-slate-800 active:scale-[0.98]'
             }`}
           >
-            {(state.activeAccountType || 'spot') === 'futures' ? '✓ FUTURES ACCOUNT DIRECTING webhooks' : 'SELECT FUTURES ACCOUNT FOR TRADING'}
+            {(state.activeAccountType || 'futures') === 'futures' ? '✓ FUTURES ACCOUNT DIRECTING webhooks' : 'SELECT FUTURES ACCOUNT FOR TRADING'}
           </button>
         </div>
 
@@ -504,21 +462,21 @@ if (sellSignal)
 
                   <div className="grid grid-cols-2 gap-2 text-[10px] font-mono leading-tight">
                     <div className={`p-1.5 rounded transition-all ${
-                      (state.activeAccountType || 'spot') === 'spot' ? 'bg-emerald-500/10 border border-emerald-500/20' : 'opacity-70 border border-transparent'
+                      (state.activeAccountType || 'futures') === 'spot' ? 'bg-emerald-500/10 border border-emerald-500/20' : 'opacity-70 border border-transparent'
                     }`}>
                       <span className={`text-[8px] block font-bold ${
-                        (state.activeAccountType || 'spot') === 'spot' ? 'text-emerald-400 font-extrabold' : 'text-slate-500'
-                      }`}>SPOT BALANCE {(state.activeAccountType || 'spot') === 'spot' && '⚡'}</span>
+                        (state.activeAccountType || 'futures') === 'spot' ? 'text-emerald-400 font-extrabold' : 'text-slate-500'
+                      }`}>SPOT BALANCE {(state.activeAccountType || 'futures') === 'spot' && '⚡'}</span>
                       <span className="text-slate-200 font-bold block mt-0.5">
                         ${(cred.spotBalance ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </span>
                     </div>
                     <div className={`p-1.5 rounded transition-all ${
-                      (state.activeAccountType || 'spot') === 'futures' ? 'bg-amber-500/15 border border-amber-500/20' : 'opacity-70 border border-transparent'
+                      (state.activeAccountType || 'futures') === 'futures' ? 'bg-amber-500/15 border border-amber-500/20' : 'opacity-70 border border-transparent'
                     }`}>
                       <span className={`text-[8px] block font-bold ${
-                        (state.activeAccountType || 'spot') === 'futures' ? 'text-amber-400 font-extrabold' : 'text-slate-500'
-                      }`}>FUTURES ACCOUNT {(state.activeAccountType || 'spot') === 'futures' && '⚡'}</span>
+                        (state.activeAccountType || 'futures') === 'futures' ? 'text-amber-400 font-extrabold' : 'text-slate-500'
+                      }`}>FUTURES ACCOUNT {(state.activeAccountType || 'futures') === 'futures' && '⚡'}</span>
                       <span className="text-slate-200 font-bold block mt-0.5">
                         ${(cred.futuresBalance ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </span>

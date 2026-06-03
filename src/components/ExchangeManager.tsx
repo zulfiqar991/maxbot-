@@ -21,7 +21,8 @@ import {
   Sparkles,
   Zap,
   CheckCircle2,
-  FileText
+  FileText,
+  Info
 } from 'lucide-react';
 import { AccountState, ExchangeCredential, SignalLog } from '../types';
 
@@ -601,19 +602,7 @@ export function ExchangeManager({ state, onUpdateSettings, coinPrices = {}, user
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-[10px] text-slate-500 uppercase font-bold mb-1 font-mono">Connection Label / Alias</label>
-                <input 
-                  type="text"
-                  required
-                  placeholder="e.g. Binance Main Bot Account"
-                  value={label}
-                  onChange={(e) => setLabel(e.target.value)}
-                  className="w-full bg-[#070A13] border border-[#20293A] rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-orange-500 font-mono"
-                />
-              </div>
-
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-[10px] text-slate-500 uppercase font-bold mb-1 font-mono">Exchange API Key</label>
                 <div className="relative">
@@ -653,28 +642,31 @@ export function ExchangeManager({ state, onUpdateSettings, coinPrices = {}, user
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-[10px] text-slate-500 uppercase font-bold mb-1 font-mono">
-                  Exchange Passphrase <span className="text-gray-600">(OKX & specific platforms)</span>
-                </label>
-                <input 
-                  type="password"
-                  placeholder="Only if required by exchange"
-                  value={passphrase}
-                  onChange={(e) => setPassphrase(e.target.value)}
-                  className="w-full bg-[#070A13] border border-[#20293A] rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-orange-500 font-mono"
-                />
-              </div>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              {(selectedEx.name.toLowerCase().includes('okx') || selectedEx.name.toLowerCase().includes('kucoin')) && (
+                <div className="flex-1 min-w-[240px]">
+                  <label className="block text-[10px] text-slate-500 uppercase font-bold mb-1 font-mono">
+                    Exchange Passphrase <span className="text-orange-400 font-semibold">*Required for {selectedEx.name}</span>
+                  </label>
+                  <input 
+                    type="password"
+                    required
+                    placeholder="Enter exchange security passphrase"
+                    value={passphrase}
+                    onChange={(e) => setPassphrase(e.target.value)}
+                    className="w-full bg-[#070A13] border border-[#20293A] rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-orange-500 font-mono"
+                  />
+                </div>
+              )}
 
-              <div className="flex flex-col justify-end">
+              <div className="flex flex-col justify-end pt-2 md:pt-0">
                 <button
                   type="button"
                   onClick={() => setIsAdvanced(!isAdvanced)}
-                  className="text-left text-[11px] text-orange-400 hover:text-orange-300 transition text-mono cursor-pointer flex items-center gap-1.5 py-2"
+                  className="text-left text-[11px] text-orange-400 hover:text-orange-300 transition text-mono cursor-pointer flex items-center gap-1.5 py-1"
                 >
                   <Server className="w-3.5 h-3.5" />
-                  <span>{isAdvanced ? "Hide Advanced Custom Endpoints" : "Show Advanced Routing Parameters"}</span>
+                  <span>{isAdvanced ? "Hide Optional Settings" : "Configure Custom Label & Routing Parameters"}</span>
                 </button>
               </div>
             </div>
@@ -682,13 +674,40 @@ export function ExchangeManager({ state, onUpdateSettings, coinPrices = {}, user
 
           {/* Advanced override parameters */}
           {isAdvanced && (
-            <div className="p-4 bg-[#070A13]/90 rounded-lg border border-slate-800 space-y-3 animate-fadeIn">
+            <div className="p-4 bg-[#070A13]/90 rounded-lg border border-slate-800 space-y-4 animate-fadeIn">
               <div className="text-[10px] font-black uppercase text-gray-400 tracking-wider">
-                Advanced Connection Gateway Overrides
+                Optional & Advanced Parameters
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[9px] text-orange-400 font-bold mb-1 font-mono">Primary REST Endpoint</label>
+                  <label className="block text-[9px] text-[#A0AEC0] font-bold mb-1 font-mono">Connection Label / Alias</label>
+                  <input 
+                    type="text"
+                    placeholder="e.g. My Primary Connection"
+                    value={label}
+                    onChange={(e) => setLabel(e.target.value)}
+                    className="w-full bg-[#0c1221] border border-slate-805 rounded px-2.5 py-1.5 text-xs text-slate-200 font-mono"
+                  />
+                </div>
+                
+                {!selectedEx.name.toLowerCase().includes('okx') && !selectedEx.name.toLowerCase().includes('kucoin') && (
+                  <div>
+                    <label className="block text-[9px] text-[#A0AEC0] font-bold mb-1 font-mono">Exchange Passphrase (Optional)</label>
+                    <input 
+                      type="password"
+                      placeholder="Only if required by exchange"
+                      value={passphrase}
+                      onChange={(e) => setPassphrase(e.target.value)}
+                      className="w-full bg-[#0c1221] border border-slate-805 rounded px-2.5 py-1.5 text-xs text-slate-200 font-mono"
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs pt-2 border-t border-slate-800/40">
+                <div>
+                  <label className="block text-[9px] text-orange-400 font-bold mb-1 font-mono">Primary REST Endpoint Override</label>
                   <input 
                     type="text"
                     value={customRest}
@@ -754,17 +773,78 @@ export function ExchangeManager({ state, onUpdateSettings, coinPrices = {}, user
       </div>
 
       {/* Synchronizer Verification Terminal Sandbox Status */}
-      <div className="bg-[#0B0F19] rounded-xl border border-[#20293A] p-5 shadow-inner" id="synchronizer-help-box">
-        <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-          <Terminal className="w-4 h-4 text-orange-400" /> API Routing Operational Handbook
-        </h4>
-        <div className="text-[11px] text-slate-400 leading-relaxed space-y-2">
-          <p>
-            When trading signals logic is routed to the configured exchange endpoints, the system utilizes active dynamic signatures built on standard payload seeds to authentic with the server. Balance tracking executes on the Spot Wallet (for standard buy/sell allocation targets) and Futures Collateral positions (for leverage, position margin calculations).
-          </p>
-          <p>
-            You can verify balance pools at any time by pressing the <strong className="text-white">"Sync Account API"</strong> button. This establishes a localized websocket tunnel alongside standard check requests, assuring the bot possesses absolute, accurate asset levels before deploying buy/sell triggers.
-          </p>
+      <div className="bg-[#0B0F19] rounded-xl border border-[#20293A] p-6 shadow-inner space-y-6" id="synchronizer-help-box">
+        <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
+          <h4 className="text-xs font-black text-slate-200 uppercase tracking-wider flex items-center gap-2">
+            <Terminal className="w-4 h-4 text-orange-400" />
+            <span>Binance Dual-Channel Spot & Futures Protocol Checklist</span>
+          </h4>
+          <span className="text-[9px] text-emerald-400 font-mono font-bold bg-emerald-500/10 border border-emerald-500/25 px-2.5 py-0.5 rounded">
+            SYS STATUS: ONLINE
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-[11px] text-slate-400">
+          <div className="space-y-4">
+            <div className="bg-[#05080E] p-3 rounded-lg border border-slate-800/40 space-y-2">
+              <span className="text-[10px] font-bold text-white uppercase tracking-wider block flex items-center gap-1">
+                <span className="text-orange-400">⭐</span> Step 1: API Key Scopes (Action Required)
+              </span>
+              <p className="leading-relaxed">
+                Log into your Binance account, go to <strong className="text-slate-300">API Management</strong>, and verify that these two permissions are toggled <strong className="text-emerald-400">ON</strong>:
+              </p>
+              <ul className="list-disc list-inside space-y-1 text-slate-300 pl-1 font-mono text-[10px]">
+                <li><strong className="text-white">Enable Reading</strong> (for Spot balance queries)</li>
+                <li><strong className="text-white">Enable Futures</strong> (for perpetual swap balances)</li>
+              </ul>
+              <p className="text-[10px] text-orange-400 italic">
+                * Note: Enable Withdrawals must remain OFF for your safety.
+              </p>
+            </div>
+
+            <div className="bg-[#05080E] p-3 rounded-lg border border-slate-800/40 space-y-2">
+              <span className="text-[10px] font-bold text-white uppercase tracking-wider block flex items-center gap-1">
+                <span className="text-orange-400">⚡</span> Step 2: Dynamic Clock Alignment (Auto)
+              </span>
+              <p className="leading-relaxed">
+                Crypto exchanges strictly reject requests with even 1 second of clock skew (<code className="text-orange-400 font-mono">-1021 timestamp error</code>). Our back-end proactively synchronizes with the Binance server time to calculate offsets on every hand-shake.
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="bg-[#05080E] p-3 rounded-lg border border-slate-800/40 space-y-2">
+              <span className="text-[10px] font-bold text-white uppercase tracking-wider block flex items-center gap-1">
+                <span className="text-orange-400">🔄</span> Step 3: Generous Sliding Window (Auto)
+              </span>
+              <p className="leading-relaxed">
+                Standard balance routines use a fragile 5,000ms validation window. We sign all endpoints using an expanded <strong className="text-white">60,000ms recvWindow</strong> scope to guarantee zero dropouts during peak network queues.
+              </p>
+            </div>
+
+            <div className="bg-[#05080E] p-3 rounded-lg border border-slate-800/40 space-y-2">
+              <span className="text-[10px] font-bold text-white uppercase tracking-wider block flex items-center gap-1">
+                <span className="text-orange-400">📡</span> Step 4: Webhook & Live Stream Handshake
+              </span>
+              <p className="leading-relaxed">
+                Once connected, your Spot and Futures accounts maintain connection streams. Real-time test-net webhooks communicate direct execution coordinates during TradingView alerts, updating wallet states immediately on dashboard views.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-orange-500/5 rounded-lg border border-orange-500/20 p-4 flex items-start gap-3">
+          <Info className="w-5 h-5 text-orange-400 flex-shrink-0 mt-0.5" />
+          <div className="text-[11px] text-slate-300 leading-relaxed">
+            <h5 className="font-bold text-white mb-1 uppercase tracking-wider text-[10px]">Debugging a Stuck "0" Balance:</h5>
+            If your Spot balance connects successfully but Futures still shows 0.00:
+            <ol className="list-decimal pl-5 space-y-1 mt-1 text-slate-400">
+              <li>Ensure your Binance API key wasn't generated using Spot-only mode when first set up.</li>
+              <li>Wait 3-5 minutes after enabling the Futures toggle on Binance for their gateways to sync.</li>
+              <li>Ensure you have transferred some <strong className="text-white">USDT</strong> into your Futures Wallet on the exchange itself (perpetual swap margins must be held in USDT).</li>
+              <li>Press the <strong className="text-orange-400 font-bold">Sync Account API</strong> button on this card to force an immediate, dual-terminal fetch bypassing any cached states.</li>
+            </ol>
+          </div>
         </div>
       </div>
     </div>

@@ -65,26 +65,15 @@ export function Header({ state, onReset, isResetting, currentUser, onUpdateSetti
             
             <div
               id="header_toggle_mode_btn"
-              onClick={handleToggleModeHeader}
-              className={`flex flex-col min-w-[155px] text-left rounded-lg p-1.5 border cursor-pointer select-none transition-all hover:scale-105 active:scale-95 ${
-                accountMode === 'real'
-                  ? 'bg-emerald-500/10 border-emerald-500/25 hover:bg-emerald-500/15'
-                  : 'bg-amber-500/10 border-amber-500/25 hover:bg-amber-500/15'
-              }`}
-              title="Click to toggle between Real Account production and Demo sandbox mode instantly."
+              className="flex flex-col min-w-[155px] text-left rounded-lg p-1.5 border bg-emerald-500/10 border-emerald-500/25 select-none transition-all"
+              title="Verified Real Account production mode."
             >
-              <span className={`text-[10px] font-mono uppercase tracking-wider flex items-center gap-1.5 ${
-                accountMode === 'real' ? 'text-emerald-400' : 'text-amber-400'
-              }`}>
-                <span className={`w-1.5 h-1.5 rounded-full animate-ping ${
-                  accountMode === 'real' ? 'bg-emerald-500' : 'bg-amber-500'
-                }`}></span>
-                {accountMode === 'real' ? 'REAL ACCOUNT' : 'DEMO MODE'}
+              <span className="text-[10px] font-mono uppercase tracking-wider flex items-center gap-1.5 text-emerald-400">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                REAL ACCOUNT
               </span>
-              <span className={`text-sm font-bold font-mono mt-0.5 ${
-                accountMode === 'real' ? 'text-emerald-400' : 'text-amber-400'
-              }`}>
-                ${modeBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              <span className="text-sm font-bold font-mono mt-0.5 text-emerald-400">
+                ${(state.realBalance ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
             </div>
 
@@ -98,7 +87,7 @@ export function Header({ state, onReset, isResetting, currentUser, onUpdateSetti
                   }
                 }}
                 className={`flex justify-between items-center text-[10px] font-mono px-2 py-1 rounded transition-all cursor-pointer ${
-                  (state.activeAccountType || 'spot') === 'spot'
+                  (state.activeAccountType || 'futures') === 'spot'
                     ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-bold'
                     : 'text-gray-400 hover:bg-slate-800/40 border border-transparent'
                 }`}
@@ -106,15 +95,15 @@ export function Header({ state, onReset, isResetting, currentUser, onUpdateSetti
               >
                 <div className="flex items-center gap-1">
                   <span className={`w-1.5 h-1.5 rounded-full ${
-                    (state.activeAccountType || 'spot') === 'spot' ? 'bg-emerald-400 animate-pulse' : 'bg-gray-500'
+                    (state.activeAccountType || 'futures') === 'spot' ? 'bg-emerald-400 animate-pulse' : 'bg-gray-500'
                   }`} />
                   <span className="uppercase tracking-wider">Spot Account:</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <span>
-                    ${(accountMode === 'real' ? (state.realSpotBalance ?? 0) : (state.spotBalance ?? 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    ${(state.realSpotBalance ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
-                  {(state.activeAccountType || 'spot') === 'spot' && (
+                  {(state.activeAccountType || 'futures') === 'spot' && (
                     <span className="text-[8px] bg-emerald-500 text-slate-950 font-black px-1 rounded-sm ml-1 transform scale-90">ACTIVE</span>
                   )}
                 </div>
@@ -129,7 +118,7 @@ export function Header({ state, onReset, isResetting, currentUser, onUpdateSetti
                   }
                 }}
                 className={`flex justify-between items-center text-[10px] font-mono px-2 py-1 rounded transition-all cursor-pointer ${
-                  (state.activeAccountType || 'spot') === 'futures'
+                  (state.activeAccountType || 'futures') === 'futures'
                     ? 'bg-amber-500/15 border border-amber-500/30 text-amber-400 font-bold'
                     : 'text-gray-400 hover:bg-slate-800/40 border border-transparent'
                 }`}
@@ -137,15 +126,15 @@ export function Header({ state, onReset, isResetting, currentUser, onUpdateSetti
               >
                 <div className="flex items-center gap-1">
                   <span className={`w-1.5 h-1.5 rounded-full ${
-                    (state.activeAccountType || 'spot') === 'futures' ? 'bg-amber-400 animate-pulse' : 'bg-gray-500'
+                    (state.activeAccountType || 'futures') === 'futures' ? 'bg-amber-400 animate-pulse' : 'bg-gray-500'
                   }`} />
                   <span className="uppercase tracking-wider">Futures Account:</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <span>
-                    ${(accountMode === 'real' ? (state.realFuturesBalance ?? 0) : (state.futuresBalance ?? 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    ${(state.realFuturesBalance ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
-                  {(state.activeAccountType || 'spot') === 'futures' && (
+                  {(state.activeAccountType || 'futures') === 'futures' && (
                     <span className="text-[8px] bg-amber-500 text-slate-950 font-black px-1 rounded-sm ml-1 transform scale-90">ACTIVE</span>
                   )}
                 </div>

@@ -115,7 +115,7 @@ export const createDefaultState = (username: string): AccountState => ({
 
 export function ensureBalancesInitialized(state: AccountState) {
   if (!state.activeAccountType) {
-    state.activeAccountType = 'spot';
+    state.activeAccountType = 'futures';
   }
   
   if (state.balance === undefined || state.balance === null || typeof state.balance !== 'number') {
@@ -171,6 +171,21 @@ export function addFunds(state: AccountState, amount: number, strategyType: 'spo
       state.realFuturesBalance = parseFloat(((state.realFuturesBalance || 0) + amount).toFixed(2));
     }
     state.realBalance = parseFloat(((state.realSpotBalance || 0) + (state.realFuturesBalance || 0)).toFixed(2));
+
+    // Proactively sync enabled credentials so individual connection balances are exact
+    if (state.exchangeCredentials && state.exchangeCredentials.length > 0) {
+      const enabledCreds = state.exchangeCredentials.filter(c => c.isEnabled);
+      if (enabledCreds.length > 0) {
+        const activeKey = enabledCreds[0];
+        if (strategyType === 'spot') {
+          activeKey.spotBalance = parseFloat(((activeKey.spotBalance || 0) + amount).toFixed(2));
+        } else {
+          activeKey.futuresBalance = parseFloat(((activeKey.futuresBalance || 0) + amount).toFixed(2));
+        }
+        activeKey.realBalance = parseFloat(((activeKey.spotBalance || 0) + (activeKey.futuresBalance || 0)).toFixed(2));
+        activeKey.balance = activeKey.realBalance;
+      }
+    }
   } else {
     if (strategyType === 'spot') {
       state.spotBalance = parseFloat(((state.spotBalance || 0) + amount).toFixed(2));
@@ -191,6 +206,21 @@ export function deductFunds(state: AccountState, amount: number, strategyType: '
       state.realFuturesBalance = parseFloat((Math.max(0, (state.realFuturesBalance || 0) - amount)).toFixed(2));
     }
     state.realBalance = parseFloat(((state.realSpotBalance || 0) + (state.realFuturesBalance || 0)).toFixed(2));
+
+    // Proactively sync enabled credentials so individual connection balances are exact
+    if (state.exchangeCredentials && state.exchangeCredentials.length > 0) {
+      const enabledCreds = state.exchangeCredentials.filter(c => c.isEnabled);
+      if (enabledCreds.length > 0) {
+        const activeKey = enabledCreds[0];
+        if (strategyType === 'spot') {
+          activeKey.spotBalance = parseFloat((Math.max(0, (activeKey.spotBalance || 0) - amount)).toFixed(2));
+        } else {
+          activeKey.futuresBalance = parseFloat((Math.max(0, (activeKey.futuresBalance || 0) - amount)).toFixed(2));
+        }
+        activeKey.realBalance = parseFloat(((activeKey.spotBalance || 0) + (activeKey.futuresBalance || 0)).toFixed(2));
+        activeKey.balance = activeKey.realBalance;
+      }
+    }
   } else {
     if (strategyType === 'spot') {
       state.spotBalance = parseFloat((Math.max(0, (state.spotBalance || 0) - amount)).toFixed(2));

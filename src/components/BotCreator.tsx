@@ -386,7 +386,9 @@ export function BotCreator({ onSave, onSaveGrid, isSaving, onCancel, botToEdit, 
                     onChange={(e) => {
                       const selected = e.target.value;
                       setExchange(selected);
-                      if (selected !== 'Binance' && selected !== 'Bybit') {
+                      if (selected.toLowerCase().includes('futures')) {
+                        setStrategyType('futures');
+                      } else if (selected.toLowerCase().includes('spot')) {
                         setStrategyType('spot');
                       }
                     }}
@@ -668,32 +670,45 @@ export function BotCreator({ onSave, onSaveGrid, isSaving, onCancel, botToEdit, 
                     </div>
                     
                     <div>
-                      <label className="block text-xs font-bold font-mono text-gray-400 uppercase tracking-wider mb-2">Buy or Sell Option</label>
-                      <div className="grid grid-cols-2 gap-3 h-[46px]">
+                      <label className="block text-xs font-bold font-mono text-gray-400 uppercase tracking-wider mb-2">Bot Strategy Direction</label>
+                      <div className="grid grid-cols-3 gap-2 h-[46px]">
                         <button
                           type="button"
                           onClick={() => setBotDirection('long')}
-                          className={`rounded-xl border flex items-center justify-center gap-2 cursor-pointer transition-all ${
+                          className={`rounded-xl border flex items-center justify-center gap-1.5 cursor-pointer transition-all ${
                             botDirection === 'long'
                               ? 'bg-emerald-500/10 border-emerald-500 text-emerald-400 font-bold shadow-lg shadow-emerald-500/10'
                               : 'bg-[#0B0F17]/40 border-slate-800 text-gray-450 hover:text-white hover:border-slate-700'
                           }`}
                         >
                           <span className="text-sm">📥</span>
-                          <span className="text-xs font-bold uppercase tracking-wider">Buy (Long)</span>
+                          <span className="text-[10px] font-bold uppercase tracking-wider">Long Only</span>
                         </button>
 
                         <button
                           type="button"
                           onClick={() => setBotDirection('short')}
-                          className={`rounded-xl border flex items-center justify-center gap-2 cursor-pointer transition-all ${
+                          className={`rounded-xl border flex items-center justify-center gap-1.5 cursor-pointer transition-all ${
                             botDirection === 'short'
                               ? 'bg-rose-500/10 border-rose-500 text-rose-400 font-bold shadow-lg shadow-rose-500/10'
                               : 'bg-[#0B0F17]/40 border-slate-800 text-gray-450 hover:text-white hover:border-slate-700'
                           }`}
                         >
                           <span className="text-sm">📤</span>
-                          <span className="text-xs font-bold uppercase tracking-wider">Sell (Short)</span>
+                          <span className="text-[10px] font-bold uppercase tracking-wider">Short Only</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setBotDirection('both')}
+                          className={`rounded-xl border flex items-center justify-center gap-1.5 cursor-pointer transition-all ${
+                            botDirection === 'both'
+                              ? 'bg-amber-500/10 border-amber-500 text-amber-400 font-bold shadow-lg shadow-amber-500/10'
+                              : 'bg-[#0B0F17]/40 border-slate-800 text-gray-450 hover:text-white hover:border-slate-700'
+                          }`}
+                        >
+                          <span className="text-sm">🔄</span>
+                          <span className="text-[10px] font-bold uppercase tracking-wider">Both</span>
                         </button>
                       </div>
                     </div>
